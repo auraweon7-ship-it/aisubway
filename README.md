@@ -351,4 +351,10 @@ MIT License — 자유롭게 사용, 수정, 배포 가능합니다.
 
 **서울 지하철 실시간 대시보드** · Made with ❤️ by [auraweon7-ship-it](https://github.com/auraweon7-ship-it)
 
+---
+
+© 2026 **박정원 교수** · 한국외국어대학교 중국언어문화학부
+
+[🌐 kteacher.kr](https://kteacher.kr) &nbsp;|&nbsp; [✉️ kletter.kr](https://kletter.kr)
+
 </div>
