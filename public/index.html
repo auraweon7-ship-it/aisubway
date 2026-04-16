@@ -587,15 +587,57 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
       </defs>
       <g clip-path="url(#clip2)">
         <rect width="680" height="160" fill="url(#sky2)"/>
+        <!-- 달 -->
         <circle cx="620" cy="22" r="12" fill="#f0e8c8" opacity=".9"/>
         <circle cx="626" cy="18" r="10" fill="#0a1322" opacity=".7"/>
-        <circle cx="18" cy="12" r=".9" fill="#fff" opacity=".7"/><circle cx="42" cy="8" r=".6" fill="#fff" opacity=".5"/>
-        <circle cx="78" cy="16" r="1" fill="#fff" opacity=".6"/><circle cx="112" cy="6" r=".7" fill="#fff" opacity=".5"/>
-        <circle cx="155" cy="14" r=".8" fill="#fff" opacity=".6"/><circle cx="234" cy="18" r="1.1" fill="#fff" opacity=".7"/>
-        <circle cx="278" cy="5" r=".7" fill="#fff" opacity=".5"/><circle cx="318" cy="13" r=".9" fill="#fff" opacity=".6"/>
-        <circle cx="398" cy="17" r=".8" fill="#fff" opacity=".6"/><circle cx="488" cy="15" r="1" fill="#fff" opacity=".7"/>
-        <circle cx="530" cy="6" r=".6" fill="#38bdf8" opacity=".5"/><circle cx="568" cy="19" r=".8" fill="#a78bfa" opacity=".5"/>
-        <circle cx="654" cy="11" r=".7" fill="#fff" opacity=".5"/>
+
+        <!-- ── 반짝이는 별 ── -->
+        <circle cx="18" cy="12" r=".9" fill="#fff">
+          <animate attributeName="opacity" values=".7;.15;.7" dur="2.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="42" cy="8" r=".6" fill="#fff">
+          <animate attributeName="opacity" values=".5;.9;.2;.5" dur="3.5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="78" cy="16" r="1" fill="#fff">
+          <animate attributeName="opacity" values=".6;.1;.8;.6" dur="4.1s" repeatCount="indefinite"/>
+          <animate attributeName="r" values="1;1.3;.7;1" dur="4.1s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="112" cy="6" r=".7" fill="#fff">
+          <animate attributeName="opacity" values=".5;.9;.3;.5" dur="2.3s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="155" cy="14" r=".8" fill="#fff">
+          <animate attributeName="opacity" values=".6;.2;.9;.6" dur="5.2s" repeatCount="indefinite"/>
+          <animate attributeName="r" values=".8;1.1;.5;.8" dur="5.2s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="234" cy="18" r="1.1" fill="#fff">
+          <animate attributeName="opacity" values=".7;.2;.7" dur="3.0s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="278" cy="5" r=".7" fill="#fff">
+          <animate attributeName="opacity" values=".5;.9;.4;.5" dur="4.7s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="318" cy="13" r=".9" fill="#fff">
+          <animate attributeName="opacity" values=".6;.1;.8;.6" dur="2.6s" repeatCount="indefinite"/>
+          <animate attributeName="r" values=".9;1.2;.6;.9" dur="2.6s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="398" cy="17" r=".8" fill="#fff">
+          <animate attributeName="opacity" values=".6;.2;.9;.6" dur="3.9s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="488" cy="15" r="1" fill="#fff">
+          <animate attributeName="opacity" values=".7;.15;.7" dur="4.4s" repeatCount="indefinite"/>
+          <animate attributeName="r" values="1;1.4;.7;1" dur="4.4s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="530" cy="6" r=".6" fill="#38bdf8">
+          <animate attributeName="opacity" values=".5;.9;.2;.5" dur="3.2s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="568" cy="19" r=".8" fill="#a78bfa">
+          <animate attributeName="opacity" values=".5;.1;.8;.5" dur="5.8s" repeatCount="indefinite"/>
+          <animate attributeName="r" values=".8;1.2;.5;.8" dur="5.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="654" cy="11" r=".7" fill="#fff">
+          <animate attributeName="opacity" values=".5;.9;.3;.5" dur="2.9s" repeatCount="indefinite"/>
+        </circle>
+
+        <!-- 배경 빌딩 -->
         <g opacity=".3" fill="#1a3050">
           <rect x="0" y="55" width="20" height="70"/><rect x="22" y="62" width="14" height="63"/>
           <rect x="38" y="50" width="18" height="75"/><rect x="36" y="44" width="6" height="8"/>
@@ -614,6 +656,7 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
           <rect x="598" y="50" width="14" height="75"/><rect x="614" y="44" width="18" height="81"/>
           <rect x="634" y="56" width="22" height="69"/><rect x="658" y="48" width="16" height="77"/>
         </g>
+        <!-- 근경 빌딩 -->
         <g fill="#1e3a5c" opacity=".85">
           <rect x="2" y="72" width="28" height="53"/><rect x="0" y="64" width="8" height="10"/>
           <rect x="32" y="78" width="22" height="47"/><rect x="56" y="66" width="32" height="59"/>
@@ -634,33 +677,148 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
           <rect x="618" y="52" width="10" height="12"/><rect x="622" y="44" width="2" height="10"/>
           <rect x="642" y="70" width="28" height="55"/><rect x="672" y="66" width="20" height="59"/>
         </g>
-        <g fill="#4a7fa0" opacity=".55">
-          <rect x="6" y="76" width="4" height="5"/><rect x="14" y="76" width="4" height="5"/>
-          <rect x="6" y="85" width="4" height="5"/><rect x="14" y="85" width="4" height="5"/>
-          <rect x="60" y="70" width="5" height="6"/><rect x="70" y="70" width="5" height="6"/>
-          <rect x="60" y="80" width="5" height="6"/><rect x="70" y="80" width="5" height="6"/>
-          <rect x="122" y="64" width="5" height="6"/><rect x="132" y="64" width="5" height="6"/>
-          <rect x="122" y="74" width="5" height="6"/><rect x="132" y="74" width="5" height="6"/>
-          <rect x="122" y="84" width="5" height="6"/><rect x="132" y="84" width="5" height="6"/>
-          <rect x="122" y="94" width="5" height="6"/><rect x="190" y="66" width="5" height="6"/>
-          <rect x="200" y="66" width="5" height="6"/><rect x="190" y="76" width="5" height="6"/>
-          <rect x="200" y="76" width="5" height="6"/><rect x="284" y="66" width="5" height="6"/>
-          <rect x="294" y="66" width="5" height="6"/><rect x="284" y="76" width="5" height="6"/>
-          <rect x="386" y="74" width="5" height="6"/><rect x="396" y="74" width="5" height="6"/>
-          <rect x="418" y="64" width="5" height="6"/><rect x="428" y="64" width="5" height="6"/>
-          <rect x="418" y="74" width="5" height="6"/><rect x="428" y="74" width="5" height="6"/>
-          <rect x="514" y="68" width="5" height="6"/><rect x="524" y="68" width="5" height="6"/>
-          <rect x="550" y="70" width="5" height="6"/><rect x="560" y="70" width="5" height="6"/>
-          <rect x="610" y="66" width="5" height="6"/><rect x="620" y="66" width="5" height="6"/>
-          <rect x="610" y="76" width="5" height="6"/><rect x="646" y="74" width="5" height="6"/>
-        </g>
-        <g fill="#f0c060" opacity=".45">
-          <rect x="14" y="94" width="4" height="5"/><rect x="70" y="80" width="5" height="6"/>
-          <rect x="132" y="74" width="5" height="6"/><rect x="200" y="86" width="5" height="6"/>
-          <rect x="294" y="86" width="5" height="6"/><rect x="396" y="84" width="5" height="6"/>
-          <rect x="438" y="74" width="5" height="6"/><rect x="524" y="78" width="5" height="6"/>
-          <rect x="620" y="76" width="5" height="6"/><rect x="656" y="74" width="5" height="6"/>
-        </g>
+
+        <!-- ── 반짝이는 창문 등불 (청색) ── -->
+        <rect x="6" y="76" width="4" height="5" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.3;.55" dur="3.1s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="14" y="76" width="4" height="5" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.15;.8;.55" dur="4.6s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="6" y="85" width="4" height="5" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.85;.2;.55" dur="2.4s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="14" y="85" width="4" height="5" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.1;.9;.55" dur="5.3s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="60" y="70" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.2;.55" dur="3.7s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="70" y="70" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.2;.8;.55" dur="2.8s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="60" y="80" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.8;.15;.55" dur="4.2s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="70" y="80" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.1;.85;.55" dur="6.1s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="122" y="64" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.3;.55" dur="3.4s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="132" y="64" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.2;.8;.55" dur="5.0s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="122" y="74" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.85;.1;.55" dur="2.7s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="132" y="74" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.15;.9;.55" dur="4.9s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="122" y="84" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.2;.55" dur="3.8s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="132" y="84" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.3;.85;.55" dur="2.2s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="122" y="94" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.1;.8;.55" dur="5.6s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="190" y="66" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.25;.55" dur="3.3s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="200" y="66" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.2;.85;.55" dur="4.5s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="190" y="76" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.8;.15;.55" dur="2.9s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="200" y="76" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.1;.9;.55" dur="6.4s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="284" y="66" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.85;.2;.55" dur="3.6s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="294" y="66" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.15;.8;.55" dur="4.8s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="284" y="76" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.3;.55" dur="2.5s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="386" y="74" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.2;.9;.55" dur="3.9s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="396" y="74" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.8;.1;.55" dur="5.1s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="418" y="64" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.2;.55" dur="2.6s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="428" y="64" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.15;.85;.55" dur="4.3s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="418" y="74" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.8;.3;.55" dur="3.2s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="428" y="74" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.2;.9;.55" dur="5.7s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="514" y="68" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.15;.55" dur="4.0s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="524" y="68" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.25;.8;.55" dur="2.3s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="550" y="70" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.85;.2;.55" dur="5.5s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="560" y="70" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.1;.9;.55" dur="3.1s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="610" y="66" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.9;.2;.55" dur="4.7s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="620" y="66" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.2;.85;.55" dur="2.8s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="610" y="76" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.8;.15;.55" dur="6.2s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="646" y="74" width="5" height="6" fill="#4a7fa0">
+          <animate attributeName="opacity" values=".55;.15;.9;.55" dur="3.5s" repeatCount="indefinite"/>
+        </rect>
+
+        <!-- ── 반짝이는 창문 등불 (금색) ── -->
+        <rect x="14" y="94" width="4" height="5" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.9;.1;.45" dur="4.2s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="70" y="80" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.15;.85;.45" dur="2.7s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="132" y="74" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.9;.2;.45" dur="5.4s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="200" y="86" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.2;.9;.45" dur="3.3s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="294" y="86" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.85;.1;.45" dur="4.8s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="396" y="84" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.1;.85;.45" dur="2.4s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="438" y="74" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.9;.15;.45" dur="6.0s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="524" y="78" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.2;.9;.45" dur="3.7s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="620" y="76" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.85;.1;.45" dur="5.2s" repeatCount="indefinite"/>
+        </rect>
+        <rect x="656" y="74" width="5" height="6" fill="#f0c060">
+          <animate attributeName="opacity" values=".45;.15;.9;.45" dur="2.9s" repeatCount="indefinite"/>
+        </rect>
         <rect x="0" y="122" width="680" height="4" fill="#0d1e32"/>
         <g fill="#0a1520" opacity=".9">
           <rect x="4" y="121" width="3" height="7"/>
