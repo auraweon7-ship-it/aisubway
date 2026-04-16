@@ -488,6 +488,18 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
 }
 .ai-hist-item:hover{background:rgba(255,255,255,.05);color:var(--text)}
 .ai-hist-item .hi-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+/* ── 승하차 인원 ── */
+.pax-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.pax-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;text-align:center}
+.pax-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;line-height:1}
+.pax-lbl{font-size:10px;color:var(--text3);margin-top:3px}
+.pax-bar-wrap{margin-top:6px}
+.pax-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:10px}
+.pax-bar-key{color:var(--text3);width:28px;flex-shrink:0}
+.pax-bar-bg{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden}
+.pax-bar-fill{height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.pax-bar-num{color:var(--text2);width:56px;text-align:right;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.pax-date{font-size:10px;color:var(--text3);text-align:right;margin-top:4px}
 {width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
 
 /* 반응형 */
@@ -1114,6 +1126,13 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
         <div class="info-row"><span class="info-key">막차</span><span class="info-val">24:00</span></div>
         <div class="info-row"><span class="info-key">환승 노선</span><span class="info-val" id="stTransfer">—</span></div>
         <div class="info-row"><span class="info-key">갱신 시각</span><span class="info-val" id="stUpd">—</span></div>
+        <!-- 승하차 인원 -->
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="section-hd" style="margin-bottom:10px">📊 승하차 인원 <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(최근 기준)</span></div>
+          <div id="passengerBox">
+            <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px 0">역 검색 후 자동 조회</div>
+          </div>
+        </div>
       </div>
 
       <!-- 즐겨찾기 -->
@@ -1524,6 +1543,7 @@ function updateStationInfo(rows,st){
   document.getElementById('stCode').textContent=r0.statnId||'—';
   const lns=[...new Set(rows.map(r=>r.subwayId?.replace('10','')).filter(Boolean))];
   document.getElementById('stTransfer').textContent=lns.length>1?lns.join('·')+'호선':'—';
+  fetchPassengers(st); // 승하차 인원 자동 조회
 }
 
 /* ── 즐겨찾기 ── */
@@ -1662,6 +1682,117 @@ function loadSample(st){
     {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:st,statnId:'2000234',bstatnNm:'성수',trainLineNm:'성수행',barvlDt:'960',arvlCd:'0',arvlMsg2:'삼성 출발',arvlMsg3:'성수'},
   ]},st);
 }
+
+/* ================================================================
+   승하차 인원 조회 (일반 OpenAPI — CardSubwayStatsNew)
+================================================================ */
+const GENERAL_KEY = '685a4d4b48617572373962795a424b';
+
+async function fetchPassengers(stName) {
+  const box = document.getElementById('passengerBox');
+  if (!box) return;
+  box.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">조회 중...</div>';
+
+  // 최근 7일 날짜 생성 (어제 기준)
+  const dates = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
+  }
+
+  // 가장 최근 날짜부터 순차 시도
+  for (const dt of dates) {
+    try {
+      const gBase = (location.hostname==='localhost'||location.hostname==='127.0.0.1')
+        ? 'http://localhost:3000/api/general'
+        : `${location.origin}/api/general`;
+
+      const url = `${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/100/${dt}`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const rows = data.CardSubwayStatsNew?.row;
+      if (!rows?.length) continue;
+
+      // 역명 매칭 (부분 일치)
+      const matched = rows.filter(r =>
+        r.SUB_STA_NM && (r.SUB_STA_NM === stName || r.SUB_STA_NM.includes(stName))
+      );
+      if (!matched.length) continue;
+
+      // 호선별 합산
+      let totalRide = 0, totalAlight = 0;
+      const lineBreakdown = {};
+      matched.forEach(r => {
+        const ride   = parseInt(r.RIDE_PASGR_NUM  || '0');
+        const alight = parseInt(r.ALIGHT_PASGR_NUM || '0');
+        totalRide   += ride;
+        totalAlight += alight;
+        const ln = r.LINE_NUM?.replace('호선','').trim() || '?';
+        if (!lineBreakdown[ln]) lineBreakdown[ln] = {ride:0,alight:0};
+        lineBreakdown[ln].ride   += ride;
+        lineBreakdown[ln].alight += alight;
+      });
+
+      renderPassengers(totalRide, totalAlight, lineBreakdown, dt);
+      return;
+    } catch(e) { continue; }
+  }
+
+  box.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">승하차 데이터 없음</div>';
+}
+
+function renderPassengers(ride, alight, lines, dt) {
+  const box = document.getElementById('passengerBox');
+  if (!box) return;
+  const fmt = n => n.toLocaleString('ko-KR');
+  const total = ride + alight;
+  const rPct  = total ? Math.round(ride   / total * 100) : 50;
+  const aPct  = total ? Math.round(alight / total * 100) : 50;
+
+  // 날짜 포맷
+  const dateStr = `${dt.slice(0,4)}.${dt.slice(4,6)}.${dt.slice(6,8)}`;
+
+  let linesHtml = '';
+  const lnMeta = {'1':'#3b5bdb','2':'#2f9e44','3':'#e8590c','4':'#4dabf7',
+                   '5':'#9c36b5','6':'#c55c1d','7':'#5c940d','8':'#e03131','9':'#e67700'};
+  const maxVal = Math.max(...Object.values(lines).map(v => v.ride + v.alight), 1);
+
+  Object.entries(lines).sort((a,b)=>(b[1].ride+b[1].alight)-(a[1].ride+a[1].alight)).forEach(([ln,v]) => {
+    const c   = lnMeta[ln] || '#64748b';
+    const tot = v.ride + v.alight;
+    const w   = Math.round(tot / maxVal * 100);
+    linesHtml += `
+      <div class="pax-bar-row">
+        <span class="pax-bar-key" style="color:${c};font-weight:700">${ln}호선</span>
+        <div class="pax-bar-bg">
+          <div class="pax-bar-fill" style="width:${w}%;background:${c}88"></div>
+        </div>
+        <span class="pax-bar-num">${fmt(tot)}</span>
+      </div>`;
+  });
+
+  box.innerHTML = `
+    <div class="pax-grid">
+      <div class="pax-card">
+        <div class="pax-val" style="color:var(--accent)">🚶 ${fmt(ride)}</div>
+        <div class="pax-lbl">승차 인원</div>
+        <div style="margin-top:5px;height:3px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden">
+          <div style="width:${rPct}%;height:100%;background:var(--accent);border-radius:10px"></div>
+        </div>
+      </div>
+      <div class="pax-card">
+        <div class="pax-val" style="color:var(--green)">🚶 ${fmt(alight)}</div>
+        <div class="pax-lbl">하차 인원</div>
+        <div style="margin-top:5px;height:3px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden">
+          <div style="width:${aPct}%;height:100%;background:var(--green);border-radius:10px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="pax-bar-wrap">${linesHtml}</div>
+    <div class="pax-date">📅 ${dateStr} 기준</div>`;
+}
+
 
 /* ================================================================
    AI 분석 엔진 (Claude API)
