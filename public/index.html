@@ -3,1022 +3,1158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>서울 지하철 실시간 대시보드</title>
+<title>서울 지하철 AI 대시보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-  /* Leaflet divIcon 기본 스타일 전역 제거 — 반드시 leaflet.css 로드 후에 위치 */
-  .leaflet-div-icon { background: transparent !important; border: none !important; }
-</style>
-<style>
-  :root {
-    --bg:#0a0e1a; --surface:#111827; --surface2:#1a2235; --border:rgba(255,255,255,0.08);
-    --accent:#00d4ff; --accent3:#a78bfa; --text:#e2e8f0; --text-muted:#64748b;
-    --success:#34d399; --warning:#fbbf24; --danger:#f87171;
-    --line1:#263c96; --line2:#3a9c3b; --line3:#f5771a; --line4:#3a71c1;
-    --line5:#8b50a4; --line6:#c55c1d; --line7:#747f00; --line8:#e31c58; --line9:#bfa100;
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;min-height:100vh;overflow-x:hidden}
-  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(0,212,255,.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03)1px,transparent 1px);background-size:40px 40px}
-  .wrapper{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:20px}
+.leaflet-div-icon{background:transparent!important;border:none!important;}
+:root{
+  --bg:#060a14;--bg2:#0c1220;--surface:#0f1929;--surface2:#151f30;--surface3:#1c2840;
+  --border:rgba(99,179,237,.1);--border2:rgba(99,179,237,.18);
+  --accent:#38bdf8;--accent2:#818cf8;--accent3:#34d399;
+  --text:#e2eaf6;--text2:#94a3b8;--text3:#4a5a72;
+  --red:#f87171;--yellow:#fbbf24;--green:#34d399;--orange:#fb923c;
+  --line1:#3b5bdb;--line2:#2f9e44;--line3:#e8590c;--line4:#4dabf7;
+  --line5:#9c36b5;--line6:#d9480f;--line7:#5c940d;--line8:#e03131;--line9:#e67700;
+  --glow:0 0 20px rgba(56,189,248,.15);
+  --card-shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',sans-serif;
+  min-height:100vh;overflow-x:hidden;
+}
 
-  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border)}
-  .logo-area{display:flex;align-items:center;gap:12px}
-  .logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--accent3));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
-  h1{font-size:20px;font-weight:700;letter-spacing:-.5px} h1 span{color:var(--accent)}
-  .header-right{display:flex;align-items:center;gap:14px}
-  .live-badge{display:flex;align-items:center;gap:6px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--success);font-family:'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase}
-  .live-dot{width:7px;height:7px;background:var(--success);border-radius:50%;animation:pulse 1.5s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
-  #clock{font-family:'DM Mono',monospace;font-size:13px;color:var(--text-muted);letter-spacing:.1em}
+/* 배경 효과 */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%,rgba(56,189,248,.06) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%,rgba(129,140,248,.05) 0%,transparent 60%),
+    linear-gradient(rgba(56,189,248,.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(56,189,248,.02) 1px,transparent 1px);
+  background-size:100% 100%,100% 100%,32px 32px,32px 32px;
+}
 
-  .controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-  .search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;transition:border-color .2s}
-  .search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.1)}
-  .search-box svg{flex-shrink:0;color:var(--text-muted)}
-  .search-box input{background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:'Noto Sans KR',sans-serif;width:100%}
-  .search-box input::placeholder{color:var(--text-muted)}
-  .search-box button{background:var(--accent);color:#000;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;transition:background .2s}
-  .search-box button:hover{background:#33deff}
-  .line-selector{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;overflow-x:auto;scrollbar-width:none}
-  .line-selector::-webkit-scrollbar{display:none}
-  .line-btn{flex-shrink:0;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .2s;font-family:'Noto Sans KR',sans-serif;color:#fff}
-  .line-btn.active{border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.4)}
-  .line-btn:hover{filter:brightness(1.2)}
-  .lb1{background:var(--line1)}.lb2{background:var(--line2)}.lb3{background:var(--line3)}.lb4{background:var(--line4)}
-  .lb5{background:var(--line5)}.lb6{background:var(--line6)}.lb7{background:var(--line7)}.lb8{background:var(--line8)}.lb9{background:var(--line9)}
+.app{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:16px 20px}
 
-  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
-  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
-  .stat-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.15)}
-  .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
-  .stat-card.c1::before{background:var(--accent)}.stat-card.c2::before{background:var(--success)}
-  .stat-card.c3::before{background:var(--warning)}.stat-card.c4::before{background:var(--accent3)}
-  .stat-label{font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:6px}
-  .stat-value{font-size:24px;font-weight:900;font-family:'DM Mono',monospace;letter-spacing:-1px}
-  .stat-card.c1 .stat-value{color:var(--accent)}.stat-card.c2 .stat-value{color:var(--success)}
-  .stat-card.c3 .stat-value{color:var(--warning)}.stat-card.c4 .stat-value{color:var(--accent3)}
-  .stat-sub{font-size:10px;color:var(--text-muted);margin-top:4px}
+/* ── TOP NAV ── */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;margin-bottom:16px;
+  background:rgba(15,25,41,.85);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:16px;
+  box-shadow:var(--card-shadow);
+}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-logo{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 0 16px rgba(56,189,248,.3);
+}
+.nav-title{font-size:16px;font-weight:800;letter-spacing:-.4px}
+.nav-title span{color:var(--accent)}
+.nav-sub{font-size:10px;color:var(--text2);font-weight:500;margin-top:1px}
+.nav-right{display:flex;align-items:center;gap:12px}
+.live-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;
+  background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  color:var(--green);letter-spacing:.1em;
+}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+#clock{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text2);letter-spacing:.08em}
+.theme-btn{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  transition:all .2s;
+}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
 
-  .body-grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
-  .left-col{display:flex;flex-direction:column;gap:14px}
+/* ── SEARCH BAR ── */
+.search-section{
+  display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:14px;
+}
+.search-wrap{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:10px 16px;transition:all .25s;position:relative;
+}
+.search-wrap:focus-within{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(56,189,248,.12),var(--glow);
+}
+.search-wrap svg{color:var(--text3);flex-shrink:0}
+.search-wrap input{
+  background:none;border:none;outline:none;width:100%;
+  font-size:14px;font-family:'Pretendard',sans-serif;color:var(--text);
+}
+.search-wrap input::placeholder{color:var(--text3)}
+#searchBtn{
+  background:linear-gradient(135deg,var(--accent),#0ea5e9);
+  color:#000;border:none;border-radius:8px;padding:7px 18px;
+  font-size:12px;font-weight:800;cursor:pointer;
+  font-family:'Pretendard',sans-serif;white-space:nowrap;
+  transition:all .2s;box-shadow:0 0 12px rgba(56,189,248,.25);
+}
+#searchBtn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(56,189,248,.4)}
+#searchBtn:active{transform:translateY(0)}
 
-  /* MAP */
-  .map-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
-  .map-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
-  .map-title{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
-  .map-legend{display:flex;gap:8px;flex-wrap:wrap}
-  .legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;padding:2px 6px;border-radius:4px;transition:background .15s;border:1px solid transparent}
-  .legend-item:hover{background:rgba(255,255,255,.06);border-color:var(--border)}
-  .legend-item.active-legend{color:var(--text)}
-  .legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-  #map{height:760px}
+/* 검색 자동완성 */
+.autocomplete{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;
+  background:var(--surface2);border:1px solid var(--border2);border-radius:10px;
+  overflow:hidden;z-index:1000;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:none;
+}
+.autocomplete.show{display:block}
+.ac-item{
+  padding:10px 16px;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:background .15s;border-bottom:1px solid var(--border);
+}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:rgba(56,189,248,.08)}
+.ac-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ac-name{font-weight:600}
+.ac-line{font-size:11px;color:var(--text2)}
 
-  /* Leaflet 다크 */
-  .leaflet-container{background:#0d1220 !important}
-  .leaflet-tile{filter:brightness(.45) saturate(.35) hue-rotate(200deg)}
-  .leaflet-control-zoom a{background:var(--surface2) !important;color:var(--text) !important;border-color:var(--border) !important}
-  .leaflet-control-attribution{background:rgba(10,14,26,.85) !important;color:var(--text-muted) !important;font-size:9px !important}
-  .leaflet-popup-content-wrapper{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
-  .leaflet-popup-tip{background:var(--surface2)}
-  .leaflet-popup-content{margin:12px 14px;font-family:'Noto Sans KR',sans-serif;font-size:13px}
+/* 호선 필터 */
+.line-filters{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:8px 12px;overflow-x:auto;scrollbar-width:none;
+}
+.line-filters::-webkit-scrollbar{display:none}
+.lf-label{font-size:10px;color:var(--text3);font-weight:700;white-space:nowrap;letter-spacing:.05em}
+.lf-btn{
+  flex-shrink:0;padding:4px 12px;border-radius:20px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  border:2px solid transparent;color:#fff;
+  font-family:'Pretendard',sans-serif;transition:all .2s;
+  opacity:.45;
+}
+.lf-btn.on{border-color:rgba(255,255,255,.7);opacity:1;box-shadow:0 0 10px rgba(255,255,255,.2)}
+.lf-btn:hover{opacity:.85}
+.lb1{background:var(--line1)}.lb2{background:var(--line2)}.lb3{background:var(--line3)}
+.lb4{background:var(--line4)}.lb5{background:var(--line5)}.lb6{background:var(--line6)}
+.lb7{background:var(--line7)}.lb8{background:var(--line8)}.lb9{background:var(--line9)}
 
-  .station-marker-div{display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid rgba(255,255,255,.75);font-size:8px;font-weight:800;color:#fff;cursor:pointer;transition:transform .15s;box-shadow:0 2px 8px rgba(0,0,0,.7)}
-  .station-marker-div.hl{border:3px solid #fff;box-shadow:0 0 16px rgba(255,255,255,.7)}
-  /* Leaflet 기본 divIcon 스타일 완전 제거 */
-  .custom-marker-icon{background:transparent !important;border:none !important;box-shadow:none !important;padding:0 !important;margin:0 !important;}
-  .leaflet-div-icon{background:transparent !important;border:none !important;box-shadow:none !important;}
+/* ── KPI CARDS ── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.kpi{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;position:relative;overflow:hidden;
+  transition:transform .2s,border-color .25s,box-shadow .25s;cursor:default;
+}
+.kpi:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:var(--card-shadow),var(--glow)}
+.kpi::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:12px 12px 0 0;
+}
+.kpi.k1::after{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.kpi.k2::after{background:linear-gradient(90deg,var(--green),#059669)}
+.kpi.k3::after{background:linear-gradient(90deg,var(--yellow),var(--orange))}
+.kpi.k4::after{background:linear-gradient(90deg,var(--accent2),#ec4899)}
+.kpi.k5::after{background:linear-gradient(90deg,var(--red),#dc2626)}
+.kpi-icon{font-size:18px;margin-bottom:8px;display:block}
+.kpi-label{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;letter-spacing:-1px;line-height:1}
+.kpi.k1 .kpi-val{color:var(--accent)}
+.kpi.k2 .kpi-val{color:var(--green)}
+.kpi.k3 .kpi-val{color:var(--yellow)}
+.kpi.k4 .kpi-val{color:var(--accent2)}
+.kpi.k5 .kpi-val{color:var(--red)}
+.kpi-sub{font-size:10px;color:var(--text3);margin-top:4px}
+.kpi-badge{
+  position:absolute;top:14px;right:14px;
+  font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.05em;
+}
+.badge-up{background:rgba(52,211,153,.15);color:var(--green)}
+.badge-dn{background:rgba(248,113,113,.15);color:var(--red)}
 
-  /* ARRIVAL */
-  .arrival-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
-  .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .panel-title{font-size:15px;font-weight:700}.panel-title em{font-style:normal;color:var(--accent)}
-  .refresh-btn{background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text-muted);padding:5px 11px;font-size:11px;cursor:pointer;transition:all .2s;font-family:'Noto Sans KR',sans-serif;display:flex;align-items:center;gap:4px}
-  .refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .refresh-btn.spinning svg{animation:spin .9s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  table{width:100%;border-collapse:collapse}
-  thead th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-  tbody tr{animation:fadeIn .35s ease forwards;opacity:0}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-  tbody tr:nth-child(1){animation-delay:.04s}tbody tr:nth-child(2){animation-delay:.08s}tbody tr:nth-child(3){animation-delay:.12s}
-  tbody tr:nth-child(4){animation-delay:.16s}tbody tr:nth-child(5){animation-delay:.20s}tbody tr:nth-child(6){animation-delay:.24s}
-  tbody tr:nth-child(7){animation-delay:.28s}tbody tr:nth-child(8){animation-delay:.32s}tbody tr:nth-child(9){animation-delay:.36s}
-  tbody tr:hover{background:rgba(255,255,255,.04)}
-  tbody td{padding:8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
-  .line-tag{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
-  .arrive-time{font-family:'DM Mono',monospace;font-weight:600}
-  .arrive-time.soon{color:var(--danger)}.arrive-time.close{color:var(--warning)}.arrive-time.normal{color:var(--success)}
-  .status-badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
-  .status-badge.running{background:rgba(52,211,153,.15);color:var(--success)}
-  .status-badge.entered{background:rgba(0,212,255,.15);color:var(--accent)}
-  .status-badge.arrived{background:rgba(248,113,113,.15);color:var(--danger)}
+/* ── MAIN GRID ── */
+.main-grid{display:grid;grid-template-columns:1fr 340px;gap:12px}
+.left-col{display:flex;flex-direction:column;gap:12px}
 
-  /* RIGHT */
-  .right-col{display:flex;flex-direction:column;gap:14px}
-  .section-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-  .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
-  .station-hero{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-  .station-circle{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0}
-  .station-meta h2{font-size:18px;font-weight:700}.station-meta p{font-size:11px;color:var(--text-muted);margin-top:2px}
-  .info-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
-  .info-row:last-child{border-bottom:none}
-  .info-label{color:var(--text-muted);font-size:11px}.info-value{font-weight:600}
-  .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-  .quick-btn{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 11px;cursor:pointer;transition:all .2s;font-family:'Noto Sans KR',sans-serif;text-align:left}
-  .quick-btn:hover{border-color:var(--accent);background:rgba(0,212,255,.06)}
-  .quick-btn .qname{font-size:12px;font-weight:700;color:var(--text);display:block}
-  .quick-btn .qline{font-size:10px;color:var(--text-muted);margin-top:1px;display:block}
-  .notice-bar{background:linear-gradient(90deg,rgba(167,139,250,.12),rgba(0,212,255,.08));border:1px solid rgba(167,139,250,.25);border-radius:9px;padding:9px 14px;font-size:11px;color:var(--accent3);margin-bottom:14px;display:flex;align-items:center;gap:7px}
-  .loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;color:var(--text-muted)}
-  .loader{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:10px}
-  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 20px;color:var(--text-muted);font-size:13px;text-align:center}
-  .empty-state .emoji{font-size:34px;margin-bottom:10px}
+/* 카드 공통 */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+}
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  background:rgba(21,31,48,.6);
+}
+.card-title{
+  font-size:12px;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.1em;
+  display:flex;align-items:center;gap:7px;
+}
+.card-title .dot{width:6px;height:6px;border-radius:50%}
 
-  /* ── 혼잡도 패널 ── */
-  .congestion-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:16px}
-  .congestion-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-  .congestion-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
-  .congestion-subtitle{font-size:11px;color:var(--text-muted);margin-top:2px}
-  .tab-group{display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:3px}
-  .tab-btn{padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-muted);font-family:'Noto Sans KR',sans-serif;transition:all .2s}
-  .tab-btn.active{background:var(--accent);color:#000}
-  .tab-btn:hover:not(.active){background:rgba(255,255,255,.07);color:var(--text)}
+/* ── MAP ── */
+#map{height:420px}
+.map-overlay{
+  position:absolute;bottom:12px;left:12px;z-index:999;
+  display:flex;flex-direction:column;gap:6px;
+}
+.map-btn{
+  background:rgba(15,25,41,.9);backdrop-filter:blur(10px);
+  border:1px solid var(--border2);border-radius:8px;
+  padding:6px 12px;font-size:11px;font-weight:600;
+  color:var(--text);cursor:pointer;transition:all .2s;
+  font-family:'Pretendard',sans-serif;white-space:nowrap;
+}
+.map-btn:hover{border-color:var(--accent);color:var(--accent)}
 
-  /* 호선별 혼잡도 바 */
-  .line-congestion-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .line-cong-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;transition:border-color .2s,transform .2s;cursor:default}
-  .line-cong-card:hover{border-color:rgba(255,255,255,.15);transform:translateY(-1px)}
-  .lcc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .lcc-name{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
-  .lcc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-  .lcc-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
-  .lcc-badge.smooth{background:rgba(52,211,153,.15);color:var(--success)}
-  .lcc-badge.normal{background:rgba(251,191,36,.15);color:var(--warning)}
-  .lcc-badge.busy{background:rgba(248,113,113,.15);color:var(--danger)}
-  .lcc-badge.congested{background:rgba(248,113,113,.25);color:#ff4444;animation:blink .8s ease-in-out infinite}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
-  .cong-bar-bg{height:6px;background:rgba(255,255,255,.08);border-radius:10px;overflow:hidden;margin-bottom:6px}
-  .cong-bar-fill{height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1)}
-  .lcc-stats{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted)}
-  .lcc-pct{font-family:'DM Mono',monospace;font-weight:600;font-size:11px}
+/* Leaflet 다크 */
+.leaflet-container{background:#06090f!important}
+.leaflet-tile{filter:brightness(.38) saturate(.3) hue-rotate(195deg)}
+.leaflet-control-zoom a{
+  background:var(--surface2)!important;color:var(--text)!important;
+  border-color:var(--border)!important;
+}
+.leaflet-control-attribution{
+  background:rgba(6,10,20,.85)!important;color:var(--text3)!important;font-size:9px!important;
+}
+.leaflet-popup-content-wrapper{
+  background:var(--surface2);color:var(--text);
+  border:1px solid var(--border2);border-radius:12px;
+  box-shadow:0 8px 40px rgba(0,0,0,.6),var(--glow);
+}
+.leaflet-popup-tip{background:var(--surface2)}
+.leaflet-popup-content{margin:14px 16px;font-family:'Pretendard',sans-serif}
 
-  /* 시간대 혼잡도 차트 */
-  .time-chart-wrap{margin-top:14px}
-  .time-chart-label{font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:600}
-  .time-chart{display:flex;align-items:flex-end;gap:3px;height:60px}
-  .time-bar-col{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:3px}
-  .time-bar{width:100%;border-radius:3px 3px 0 0;transition:height .6s cubic-bezier(.4,0,.2,1),background .3s;min-height:2px;cursor:pointer}
-  .time-bar:hover{filter:brightness(1.3)}
-  .time-bar-tick{font-size:8px;color:var(--text-muted);white-space:nowrap}
-  .time-bar-col.now .time-bar{outline:2px solid #fff;outline-offset:1px}
-  .time-bar-col.now .time-bar-tick{color:var(--accent);font-weight:700}
+/* ── 도착 테이블 ── */
+.arrival-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.arrival-title{font-size:14px;font-weight:700}
+.arrival-title em{font-style:normal;color:var(--accent)}
+.refresh-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text2);cursor:pointer;transition:all .2s;
+  font-family:'Pretendard',sans-serif;
+}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+.refresh-btn.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* 현재 역 혼잡도 */
-  .station-cong-wrap{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)}
-  .station-cong-gauge{position:relative;width:64px;height:64px;flex-shrink:0}
-  .station-cong-gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
-  .gauge-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:6}
-  .gauge-fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1),stroke .3s}
-  .gauge-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'DM Mono',monospace}
-  .gauge-pct{font-size:14px;font-weight:900}
-  .gauge-label{font-size:8px;color:var(--text-muted);margin-top:-1px}
-  .station-cong-info{flex:1}
-  .sci-title{font-size:13px;font-weight:700;margin-bottom:4px}
-  .sci-rows{display:flex;flex-direction:column;gap:3px}
-  .sci-row{display:flex;justify-content:space-between;font-size:11px}
-  .sci-key{color:var(--text-muted)}.sci-val{font-weight:600;font-family:'DM Mono',monospace}
+table{width:100%;border-collapse:collapse}
+thead th{
+  font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--text3);
+  padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;
+  background:rgba(21,31,48,.5);
+}
+tbody tr{animation:rowIn .3s ease forwards;opacity:0;transition:background .15s}
+@keyframes rowIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+tbody tr:nth-child(1){animation-delay:.03s}tbody tr:nth-child(2){animation-delay:.06s}
+tbody tr:nth-child(3){animation-delay:.09s}tbody tr:nth-child(4){animation-delay:.12s}
+tbody tr:nth-child(5){animation-delay:.15s}tbody tr:nth-child(6){animation-delay:.18s}
+tbody tr:nth-child(7){animation-delay:.21s}tbody tr:nth-child(8){animation-delay:.24s}
+tbody tr:hover{background:rgba(56,189,248,.05)}
+tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
 
-  @media(max-width:1100px){.body-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:repeat(2,1fr)}.controls{grid-template-columns:1fr}.line-congestion-grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:600px){.stats-row{grid-template-columns:1fr 1fr}header{flex-direction:column;align-items:flex-start;gap:10px}.line-congestion-grid{grid-template-columns:1fr 1fr}}
-  ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
+.line-circle{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;font-size:9px;font-weight:800;color:#fff;
+}
+.arrive-chip{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+  padding:3px 8px;border-radius:6px;white-space:nowrap;
+}
+.ac-soon{background:rgba(248,113,113,.15);color:var(--red)}
+.ac-close{background:rgba(251,191,36,.12);color:var(--yellow)}
+.ac-ok{background:rgba(52,211,153,.1);color:var(--green)}
+.ac-arrive{background:rgba(248,113,113,.25);color:var(--red);animation:blink .7s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+.status-pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.sp-run{background:rgba(52,211,153,.12);color:var(--green)}
+.sp-in{background:rgba(56,189,248,.12);color:var(--accent)}
+.sp-arr{background:rgba(248,113,113,.15);color:var(--red)}
+
+/* ── RIGHT COL ── */
+.right-col{display:flex;flex-direction:column;gap:12px}
+.section-hd{
+  font-size:10px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.12em;
+  margin-bottom:10px;display:flex;align-items:center;gap:8px;
+}
+.section-hd::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* 역 정보 카드 */
+.station-hero{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.station-badge{
+  width:46px;height:46px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:900;color:#fff;flex-shrink:0;
+  box-shadow:0 0 16px rgba(0,0,0,.4);
+}
+.station-nm{font-size:18px;font-weight:800;letter-spacing:-.4px}
+.station-line{font-size:11px;color:var(--text2);margin-top:2px}
+.info-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;
+}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--text2);font-size:11px}
+.info-val{font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px}
+
+/* 즐겨찾기 & 빠른 검색 */
+.fav-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fav-btn{
+  background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  padding:9px 12px;cursor:pointer;transition:all .2s;
+  font-family:'Pretendard',sans-serif;text-align:left;position:relative;overflow:hidden;
+}
+.fav-btn::before{
+  content:'';position:absolute;inset:0;opacity:0;
+  background:linear-gradient(135deg,rgba(56,189,248,.1),transparent);
+  transition:opacity .2s;
+}
+.fav-btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+.fav-btn:hover::before{opacity:1}
+.fav-nm{font-size:12px;font-weight:700;color:var(--text);display:block}
+.fav-ln{font-size:10px;color:var(--text3);margin-top:1px;display:block}
+.fav-star{position:absolute;top:8px;right:8px;font-size:10px;cursor:pointer;opacity:.4;transition:opacity .2s}
+.fav-star.active{opacity:1}
+
+/* ── 혼잡도 패널 ── */
+.cong-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:12px}
+.cong-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.tab-row{display:flex;gap:3px;background:var(--surface2);border-radius:8px;padding:3px}
+.tab{
+  padding:4px 14px;border-radius:6px;font-size:11px;font-weight:700;
+  cursor:pointer;border:none;background:transparent;color:var(--text2);
+  font-family:'Pretendard',sans-serif;transition:all .2s;
+}
+.tab.on{background:var(--accent);color:#000}
+.tab:hover:not(.on){background:rgba(255,255,255,.06);color:var(--text)}
+
+.cong-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px}
+.cong-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:12px;transition:all .2s;
+}
+.cong-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.cc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cc-name{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.cc-dot{width:9px;height:9px;border-radius:50%}
+.cc-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px}
+.cb-smooth{background:rgba(52,211,153,.15);color:var(--green)}
+.cb-normal{background:rgba(251,191,36,.12);color:var(--yellow)}
+.cb-busy{background:rgba(248,113,113,.13);color:var(--red)}
+.cb-jam{background:rgba(248,113,113,.22);color:#ff3333;animation:blink .9s ease-in-out infinite}
+.bar-bg{height:4px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden;margin-bottom:6px}
+.bar-fill{height:100%;border-radius:10px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.cc-bot{display:flex;justify-content:space-between;font-size:10px;color:var(--text3)}
+.cc-pct{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px}
+
+/* 시간대 차트 */
+.time-chart-wrap{padding:16px}
+.tc-label{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:10px}
+.tc-bars{display:flex;align-items:flex-end;gap:2px;height:72px}
+.tc-col{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:3px}
+.tc-bar{width:100%;border-radius:3px 3px 0 0;min-height:2px;cursor:pointer;transition:filter .2s}
+.tc-bar:hover{filter:brightness(1.4)}
+.tc-tick{font-size:8px;color:var(--text3)}
+.tc-col.now .tc-bar{outline:2px solid rgba(255,255,255,.6);outline-offset:1px}
+.tc-col.now .tc-tick{color:var(--accent);font-weight:700}
+.tc-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:10px;color:var(--text2)}
+
+/* 게이지 */
+.gauge-wrap{display:flex;align-items:center;gap:14px;padding:14px 16px}
+.gauge-svg-wrap{position:relative;width:80px;height:80px;flex-shrink:0}
+.gauge-svg-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge-bg-c{fill:none;stroke:rgba(255,255,255,.07);stroke-width:7}
+.gauge-fill-c{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset .9s cubic-bezier(.4,0,.2,1),stroke .3s}
+.gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge-pct{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:900;line-height:1}
+.gauge-lbl{font-size:9px;color:var(--text3);margin-top:2px}
+.gauge-info{flex:1}
+.gi-title{font-size:14px;font-weight:800;margin-bottom:6px}
+.gi-row{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.gi-row:last-child{border-bottom:none}
+.gi-key{color:var(--text2)}.gi-val{font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{
+  padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;
+  backdrop-filter:blur(20px);border:1px solid;max-width:320px;
+  animation:toastIn .3s ease;box-shadow:0 8px 32px rgba(0,0,0,.4);
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.toast.info{background:rgba(56,189,248,.15);border-color:rgba(56,189,248,.3);color:var(--accent)}
+.toast.success{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.3);color:var(--green)}
+.toast.error{background:rgba(248,113,113,.15);border-color:rgba(248,113,113,.3);color:var(--red)}
+
+/* ── 로딩/빈 상태 ── */
+.loading-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px;color:var(--text2)}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+.empty-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;color:var(--text2);font-size:13px;text-align:center;gap:8px}
+.empty-box .ei{font-size:36px}
+
+/* 스크롤바 */
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
+
+/* 반응형 */
+@media(max-width:1200px){
+  .main-grid{grid-template-columns:1fr}
+  .kpi-row{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:768px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .search-section{grid-template-columns:1fr}
+  nav{padding:10px 14px}
+  .cong-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .fav-grid{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
-<div class="wrapper">
+<div class="app">
 
-  <header>
-    <div class="logo-area">
-      <div class="logo-icon">🚇</div>
+  <!-- NAV -->
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-logo">🚇</div>
       <div>
-        <h1>서울 지하철 <span>실시간</span> 대시보드</h1>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Seoul Metro Realtime · 열린데이터광장 API</div>
+        <div class="nav-title">서울 지하철 <span>AI</span> 대시보드</div>
+        <div class="nav-sub">Seoul Metro Realtime Intelligence · 열린데이터광장</div>
       </div>
     </div>
-    <div class="header-right">
-      <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+    <div class="nav-right">
+      <div class="live-pill"><span class="pulse"></span>LIVE</div>
       <div id="clock">--:--:--</div>
+      <button class="theme-btn" onclick="toggleMapStyle()" title="지도 스타일 변경">🗺</button>
+      <button class="theme-btn" onclick="exportData()" title="데이터 내보내기">📥</button>
     </div>
-  </header>
+  </nav>
 
-  <div class="notice-bar">
-    ℹ️ 지도의 역 마커를 클릭하면 실시간 도착 정보가 조회됩니다. 호선 버튼으로 노선 표시/숨김을 제어할 수 있습니다.
-  </div>
-
-  <div class="controls">
-    <div class="search-box">
-      <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="stationInput" placeholder="역명 입력 (예: 강남, 홍대입구, 서울역)" />
-      <button onclick="searchStation()">검색</button>
+  <!-- SEARCH -->
+  <div class="search-section">
+    <div class="search-wrap" style="position:relative">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="stationInput" type="text" placeholder="역명 검색 (예: 강남, 홍대입구, 서울역, 잠실...)" autocomplete="off"/>
+      <button id="searchBtn" onclick="searchStation()">검색</button>
+      <div class="autocomplete" id="autocomplete"></div>
     </div>
-    <div class="line-selector">
-      <span style="font-size:10px;color:var(--text-muted);white-space:nowrap;">표시 ▶</span>
-      <button class="line-btn lb1" id="btn-line1" onclick="toggleLine('1')">1호선</button>
-      <button class="line-btn lb2 active" id="btn-line2" onclick="toggleLine('2')">2호선</button>
-      <button class="line-btn lb3 active" id="btn-line3" onclick="toggleLine('3')">3호선</button>
-      <button class="line-btn lb4 active" id="btn-line4" onclick="toggleLine('4')">4호선</button>
-      <button class="line-btn lb5 active" id="btn-line5" onclick="toggleLine('5')">5호선</button>
-      <button class="line-btn lb6" id="btn-line6" onclick="toggleLine('6')">6호선</button>
-      <button class="line-btn lb7" id="btn-line7" onclick="toggleLine('7')">7호선</button>
-      <button class="line-btn lb8" id="btn-line8" onclick="toggleLine('8')">8호선</button>
-      <button class="line-btn lb9" id="btn-line9" onclick="toggleLine('9')">9호선</button>
-    </div>
-  </div>
-
-  <div class="stats-row">
-    <div class="stat-card c1">
-      <div class="stat-label">조회 역명</div>
-      <div class="stat-value" id="stat-station" style="font-size:16px;letter-spacing:-.3px;">강남</div>
-      <div class="stat-sub">현재 조회 중인 역</div>
-    </div>
-    <div class="stat-card c2">
-      <div class="stat-label">도착 예정</div>
-      <div class="stat-value" id="stat-total">--</div>
-      <div class="stat-sub">열차 편성 수</div>
-    </div>
-    <div class="stat-card c3">
-      <div class="stat-label">최단 도착</div>
-      <div class="stat-value" id="stat-min">--</div>
-      <div class="stat-sub">분 후 도착</div>
-    </div>
-    <div class="stat-card c4">
-      <div class="stat-label">운행 중</div>
-      <div class="stat-value" id="stat-running">--</div>
-      <div class="stat-sub">해당 역 기준</div>
+    <div class="line-filters">
+      <span class="lf-label">호선</span>
+      <button class="lf-btn lb1 on" id="fb1" onclick="toggleLine('1')">1</button>
+      <button class="lf-btn lb2 on" id="fb2" onclick="toggleLine('2')">2</button>
+      <button class="lf-btn lb3 on" id="fb3" onclick="toggleLine('3')">3</button>
+      <button class="lf-btn lb4 on" id="fb4" onclick="toggleLine('4')">4</button>
+      <button class="lf-btn lb5 on" id="fb5" onclick="toggleLine('5')">5</button>
+      <button class="lf-btn lb6 on" id="fb6" onclick="toggleLine('6')">6</button>
+      <button class="lf-btn lb7 on" id="fb7" onclick="toggleLine('7')">7</button>
+      <button class="lf-btn lb8 on" id="fb8" onclick="toggleLine('8')">8</button>
+      <button class="lf-btn lb9 on" id="fb9" onclick="toggleLine('9')">9</button>
+      <span style="width:1px;height:16px;background:var(--border);flex-shrink:0"></span>
+      <button class="lf-btn" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:20px;opacity:1" onclick="toggleAllLines()">전체</button>
     </div>
   </div>
 
+  <!-- KPI -->
+  <div class="kpi-row">
+    <div class="kpi k1">
+      <span class="kpi-icon">📍</span>
+      <div class="kpi-label">조회 역</div>
+      <div class="kpi-val" id="kv-station" style="font-size:18px;letter-spacing:-.3px">강남</div>
+      <div class="kpi-sub">현재 조회 중</div>
+    </div>
+    <div class="kpi k2">
+      <span class="kpi-icon">🚆</span>
+      <div class="kpi-label">도착 예정</div>
+      <div class="kpi-val" id="kv-total">--</div>
+      <div class="kpi-sub">열차 편성</div>
+    </div>
+    <div class="kpi k3">
+      <span class="kpi-icon">⏱</span>
+      <div class="kpi-label">최단 도착</div>
+      <div class="kpi-val" id="kv-min">--</div>
+      <div class="kpi-sub">분 후</div>
+    </div>
+    <div class="kpi k4">
+      <span class="kpi-icon">🔄</span>
+      <div class="kpi-label">운행 중</div>
+      <div class="kpi-val" id="kv-run">--</div>
+      <div class="kpi-sub">해당 역 기준</div>
+    </div>
+    <div class="kpi k5">
+      <span class="kpi-icon">📊</span>
+      <div class="kpi-label">혼잡도</div>
+      <div class="kpi-val" id="kv-cong">--</div>
+      <div class="kpi-sub" id="kv-cong-lbl">분석 중</div>
+    </div>
+  </div>
 
-  <!-- CONGESTION PANEL -->
-  <div class="congestion-panel">
-    <div class="congestion-header">
-      <div>
-        <div class="congestion-title">
-          <span>📊</span> 실시간 혼잡도 분석
-          <span style="font-size:10px;background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.25);border-radius:20px;padding:2px 8px;font-weight:600;">AUTO REFRESH</span>
+  <!-- 혼잡도 -->
+  <div class="cong-panel">
+    <div class="cong-head">
+      <div class="card-title">
+        <span class="dot" style="background:var(--accent)"></span>
+        실시간 혼잡도 분석
+        <span style="font-size:9px;background:rgba(56,189,248,.1);color:var(--accent);border:1px solid rgba(56,189,248,.2);border-radius:20px;padding:2px 8px;font-weight:700;letter-spacing:.05em">60s AUTO</span>
+      </div>
+      <div class="tab-row">
+        <button class="tab on" id="tab-line" onclick="switchTab('line')">호선별</button>
+        <button class="tab" id="tab-time" onclick="switchTab('time')">시간대</button>
+        <button class="tab" id="tab-st" onclick="switchTab('st')">현재역</button>
+      </div>
+    </div>
+    <div id="panel-line"><div class="cong-grid" id="congGrid"></div></div>
+    <div id="panel-time" style="display:none">
+      <div class="time-chart-wrap">
+        <div class="tc-label">⏱ 오늘 시간대별 혼잡도 (전 노선 평균)</div>
+        <div class="tc-bars" id="tcBars"></div>
+        <div class="tc-legend">
+          <span>🟢 여유 0~40%</span><span>🟡 보통 40~65%</span>
+          <span>🔴 혼잡 65~85%</span><span>🔥 매우혼잡 85%+</span>
         </div>
-        <div class="congestion-subtitle">현재 시간 기준 호선별 혼잡도 · 열차 간격 · 운행 현황 실시간 분석</div>
-      </div>
-      <div class="tab-group">
-        <button class="tab-btn active" id="tab-line" onclick="switchTab('line')">호선별</button>
-        <button class="tab-btn" id="tab-time" onclick="switchTab('time')">시간대</button>
-        <button class="tab-btn" id="tab-station" onclick="switchTab('station')">현재 역</button>
       </div>
     </div>
-    <div id="panel-line">
-      <div class="line-congestion-grid" id="lineCongGrid"></div>
-    </div>
-    <div id="panel-time" style="display:none;">
-      <div class="time-chart-label">⏱ 오늘 시간대별 혼잡도 추이 (전 노선 평균)</div>
-      <div class="time-chart" id="timeChart"></div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text-muted);display:flex;gap:14px;flex-wrap:wrap;">
-        <span>🟢 여유 (0~40%)</span><span>🟡 보통 (40~65%)</span><span>🔴 혼잡 (65~85%)</span><span>🔥 매우혼잡 (85%+)</span>
-      </div>
-    </div>
-    <div id="panel-station" style="display:none;">
-      <div class="station-cong-wrap" id="stationCongWrap">
-        <div class="station-cong-gauge">
-          <svg viewBox="0 0 64 64">
-            <circle class="gauge-bg" cx="32" cy="32" r="28"/>
-            <circle class="gauge-fill" id="gaugeFill" cx="32" cy="32" r="28" stroke-dasharray="175.9" stroke-dashoffset="175.9" stroke="#34d399"/>
+    <div id="panel-st" style="display:none">
+      <div class="gauge-wrap">
+        <div class="gauge-svg-wrap">
+          <svg viewBox="0 0 80 80">
+            <circle class="gauge-bg-c" cx="40" cy="40" r="33"/>
+            <circle class="gauge-fill-c" id="gaugeFill" cx="40" cy="40" r="33" stroke-dasharray="207.3" stroke-dashoffset="207.3" stroke="var(--green)"/>
           </svg>
-          <div class="gauge-text">
+          <div class="gauge-center">
             <span class="gauge-pct" id="gaugePct">--</span>
-            <span class="gauge-label">혼잡도</span>
+            <span class="gauge-lbl">혼잡도</span>
           </div>
         </div>
-        <div class="station-cong-info">
-          <div class="sci-title" id="sciTitle">역 선택 후 조회</div>
-          <div class="sci-rows">
-            <div class="sci-row"><span class="sci-key">혼잡 단계</span><span class="sci-val" id="sciLevel">—</span></div>
-            <div class="sci-row"><span class="sci-key">평균 대기</span><span class="sci-val" id="sciWait">—</span></div>
-            <div class="sci-row"><span class="sci-key">열차 간격</span><span class="sci-val" id="sciInterval">—</span></div>
-            <div class="sci-row"><span class="sci-key">운행 방향 수</span><span class="sci-val" id="sciDirections">—</span></div>
-            <div class="sci-row"><span class="sci-key">혼잡 예측</span><span class="sci-val" id="sciPrediction">—</span></div>
-          </div>
+        <div class="gauge-info">
+          <div class="gi-title" id="giTitle">역 선택 후 조회</div>
+          <div class="gi-row"><span class="gi-key">혼잡 단계</span><span class="gi-val" id="giLevel">—</span></div>
+          <div class="gi-row"><span class="gi-key">평균 대기</span><span class="gi-val" id="giWait">—</span></div>
+          <div class="gi-row"><span class="gi-key">열차 간격</span><span class="gi-val" id="giInterval">—</span></div>
+          <div class="gi-row"><span class="gi-key">다음 피크</span><span class="gi-val" id="giPeak">—</span></div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="body-grid">
+  <!-- MAIN GRID -->
+  <div class="main-grid">
     <div class="left-col">
 
       <!-- MAP -->
-      <div class="map-card">
-        <div class="map-header">
-          <span class="map-title">🗺️ 서울 지하철 노선도</span>
-          <div class="map-legend">
-            <div class="legend-item active-legend" onclick="toggleLine('1')" id="leg-1"><span class="legend-dot" style="background:#263c96"></span>1호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('2')" id="leg-2"><span class="legend-dot" style="background:#3a9c3b"></span>2호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('3')" id="leg-3"><span class="legend-dot" style="background:#f5771a"></span>3호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('4')" id="leg-4"><span class="legend-dot" style="background:#3a71c1"></span>4호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('5')" id="leg-5"><span class="legend-dot" style="background:#8b50a4"></span>5호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('6')" id="leg-6"><span class="legend-dot" style="background:#c55c1d"></span>6호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('7')" id="leg-7"><span class="legend-dot" style="background:#747f00"></span>7호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('8')" id="leg-8"><span class="legend-dot" style="background:#e31c58"></span>8호선</div>
-            <div class="legend-item active-legend" onclick="toggleLine('9')" id="leg-9"><span class="legend-dot" style="background:#bfa100"></span>9호선</div>
+      <div class="card" style="position:relative">
+        <div class="card-head">
+          <div class="card-title"><span class="dot" style="background:var(--green)"></span>실시간 노선도</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:10px;color:var(--text3)">역 클릭 → 실시간 도착 조회</span>
           </div>
         </div>
         <div id="map"></div>
       </div>
 
-      <!-- ARRIVAL TABLE -->
-      <div class="arrival-card">
-        <div class="panel-header">
-          <div class="panel-title">실시간 도착 정보 — <em id="panelStationName">강남역</em></div>
-          <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
-            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.22"/></svg>새로고침
-          </button>
+      <!-- ARRIVAL -->
+      <div class="card">
+        <div class="arrival-head">
+          <div class="arrival-title">실시간 도착 — <em id="arrivalTitle">강남역</em></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;color:var(--text3)" id="lastUpd">—</span>
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
+              <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.22"/></svg>
+              갱신
+            </button>
+          </div>
         </div>
-        <div id="arrivalTable">
-          <div class="loading-state"><div class="loader"></div><span>데이터를 불러오는 중...</span></div>
+        <div id="arrivalBody">
+          <div class="loading-box"><div class="spinner"></div>데이터 불러오는 중...</div>
         </div>
       </div>
     </div>
 
     <!-- RIGHT -->
     <div class="right-col">
-      <div class="card">
-        <div class="section-title">역 정보</div>
+
+      <!-- 역 정보 -->
+      <div class="card" style="padding:16px">
+        <div class="section-hd">역 정보</div>
         <div class="station-hero">
-          <div class="station-circle" id="stationCircle" style="background:var(--line2);">2</div>
-          <div class="station-meta">
-            <h2 id="stationTitle">강남역</h2>
-            <p id="stationLineInfo">수도권 2호선</p>
+          <div class="station-badge" id="stBadge" style="background:var(--line2)">2</div>
+          <div>
+            <div class="station-nm" id="stName">강남역</div>
+            <div class="station-line" id="stLine">수도권 2호선</div>
           </div>
         </div>
-        <div class="info-row"><span class="info-label">역 코드</span><span class="info-value" id="stationCode" style="font-family:'DM Mono',monospace;">—</span></div>
-        <div class="info-row"><span class="info-label">첫차</span><span class="info-value">05:30</span></div>
-        <div class="info-row"><span class="info-label">막차</span><span class="info-value">24:00</span></div>
-        <div class="info-row"><span class="info-label">마지막 갱신</span><span class="info-value" id="lastUpdate" style="font-family:'DM Mono',monospace;font-size:11px;">—</span></div>
+        <div class="info-row"><span class="info-key">역 코드</span><span class="info-val" id="stCode">—</span></div>
+        <div class="info-row"><span class="info-key">첫차</span><span class="info-val">05:30</span></div>
+        <div class="info-row"><span class="info-key">막차</span><span class="info-val">24:00</span></div>
+        <div class="info-row"><span class="info-key">환승 노선</span><span class="info-val" id="stTransfer">—</span></div>
+        <div class="info-row"><span class="info-key">갱신 시각</span><span class="info-val" id="stUpd">—</span></div>
       </div>
 
-      <div class="card">
-        <div class="section-title">인기 역 빠른 검색</div>
-        <div class="quick-grid">
-          <button class="quick-btn" onclick="quickSearch('강남')"><span class="qname">강남</span><span class="qline">2호선</span></button>
-          <button class="quick-btn" onclick="quickSearch('홍대입구')"><span class="qname">홍대입구</span><span class="qline">2호선</span></button>
-          <button class="quick-btn" onclick="quickSearch('서울역')"><span class="qname">서울역</span><span class="qline">1·4호선</span></button>
-          <button class="quick-btn" onclick="quickSearch('신촌')"><span class="qname">신촌</span><span class="qline">2호선</span></button>
-          <button class="quick-btn" onclick="quickSearch('종로3가')"><span class="qname">종로3가</span><span class="qline">1·3·5호선</span></button>
-          <button class="quick-btn" onclick="quickSearch('잠실')"><span class="qname">잠실</span><span class="qline">2·8호선</span></button>
-          <button class="quick-btn" onclick="quickSearch('신사')"><span class="qname">신사</span><span class="qline">3호선</span></button>
-          <button class="quick-btn" onclick="quickSearch('이태원')"><span class="qname">이태원</span><span class="qline">6호선</span></button>
+      <!-- 즐겨찾기 -->
+      <div class="card" style="padding:16px">
+        <div class="section-hd">즐겨찾기 & 빠른 검색</div>
+        <div class="fav-grid" id="favGrid">
+          <button class="fav-btn" onclick="quickSearch('강남')"><span class="fav-nm">강남</span><span class="fav-ln">2호선</span><span class="fav-star active" onclick="toggleFav(event,'강남')">⭐</span></button>
+          <button class="fav-btn" onclick="quickSearch('홍대입구')"><span class="fav-nm">홍대입구</span><span class="fav-ln">2호선</span><span class="fav-star active" onclick="toggleFav(event,'홍대입구')">⭐</span></button>
+          <button class="fav-btn" onclick="quickSearch('서울역')"><span class="fav-nm">서울역</span><span class="fav-ln">1·4호선</span><span class="fav-star" onclick="toggleFav(event,'서울역')">⭐</span></button>
+          <button class="fav-btn" onclick="quickSearch('신촌')"><span class="fav-nm">신촌</span><span class="fav-ln">2호선</span><span class="fav-star" onclick="toggleFav(event,'신촌')">⭐</span></button>
+          <button class="fav-btn" onclick="quickSearch('종로3가')"><span class="fav-nm">종로3가</span><span class="fav-ln">1·3·5호선</span><span class="fav-star" onclick="toggleFav(event,'종로3가')">⭐</span></button>
+          <button class="fav-btn" onclick="quickSearch('잠실')"><span class="fav-nm">잠실</span><span class="fav-ln">2·8호선</span><span class="fav-star" onclick="toggleFav(event,'잠실')">⭐</span></button>
+          <button class="fav-btn" onclick="quickSearch('이태원')"><span class="fav-nm">이태원</span><span class="fav-ln">6호선</span><span class="fav-star" onclick="toggleFav(event,'이태원')">⭐</span></button>
+          <button class="fav-btn" onclick="quickSearch('신사')"><span class="fav-nm">신사</span><span class="fav-ln">3호선</span><span class="fav-star" onclick="toggleFav(event,'신사')">⭐</span></button>
         </div>
       </div>
 
-      <div class="card" style="padding:14px 16px;">
-        <div class="section-title">지도 사용법</div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:2;">
-          🔵 역 마커 클릭 → <strong style="color:var(--text)">팝업에서 도착 조회</strong><br>
+      <!-- 안내 -->
+      <div class="card" style="padding:14px 16px">
+        <div class="section-hd">사용법</div>
+        <div style="font-size:12px;color:var(--text2);line-height:2.1">
+          🔍 역명 검색 → <strong style="color:var(--text)">자동완성 + 즉시 조회</strong><br>
+          🗺 역 클릭 → <strong style="color:var(--text)">팝업에서 도착 조회</strong><br>
           🎨 호선 버튼 → <strong style="color:var(--text)">노선 표시/숨김</strong><br>
-          🔍 스크롤 → <strong style="color:var(--text)">지도 확대/축소</strong><br>
-          📍 드래그 → <strong style="color:var(--text)">지도 이동</strong>
+          📥 내보내기 → <strong style="color:var(--text)">현재 도착정보 CSV</strong><br>
+          ⭐ 별표 → <strong style="color:var(--text)">즐겨찾기 추가/제거</strong>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
 <script>
+/* ── CONFIG ── */
 const API_KEY = '685a4d4b48617572373962795a424b';
-// 로컬(localhost)이면 3000 포트, 배포 환경이면 현재 도메인 자동 사용
-const BASE_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+const BASE_URL = (location.hostname==='localhost'||location.hostname==='127.0.0.1')
   ? 'http://localhost:3000/api/subway'
   : `${location.origin}/api/subway`;
 
 const LINE_META = {
-  '1':{color:'#263c96',name:'1호선'},
-  '2':{color:'#3a9c3b',name:'2호선'},
-  '3':{color:'#f5771a',name:'3호선'},
-  '4':{color:'#3a71c1',name:'4호선'},
-  '5':{color:'#8b50a4',name:'5호선'},
-  '6':{color:'#c55c1d',name:'6호선'},
-  '7':{color:'#747f00',name:'7호선'},
-  '8':{color:'#e31c58',name:'8호선'},
-  '9':{color:'#bfa100',name:'9호선'}
+  '1':{color:'#3b5bdb',name:'1호선'},'2':{color:'#2f9e44',name:'2호선'},
+  '3':{color:'#e8590c',name:'3호선'},'4':{color:'#4dabf7',name:'4호선'},
+  '5':{color:'#9c36b5',name:'5호선'},'6':{color:'#d9480f',name:'6호선'},
+  '7':{color:'#5c940d',name:'7호선'},'8':{color:'#e03131',name:'8호선'},
+  '9':{color:'#e67700',name:'9호선'}
 };
 
-// 서울 지하철 주요 역 좌표 (1~9호선)
+const HOURLY = [5,3,2,2,4,12,35,72,88,68,52,55,58,50,45,48,55,62,85,92,78,60,40,20];
+const LINE_W  = {'1':.85,'2':1.15,'3':.95,'4':.9,'5':1.05,'6':.8,'7':1.1,'8':.75,'9':1.2};
+
+/* ── 역 좌표 데이터 ── */
 const LINES = {
-  '1':{color:'#263c96',stations:[
+  '1':{color:'#3b5bdb',stations:[
     {n:'도봉산',lat:37.700,lng:127.040},{n:'도봉',lat:37.690,lng:127.040},{n:'방학',lat:37.677,lng:127.040},
     {n:'창동',lat:37.652,lng:127.047},{n:'쌍문',lat:37.648,lng:127.034},{n:'수유',lat:37.638,lng:127.025},
     {n:'미아사거리',lat:37.614,lng:127.028},{n:'길음',lat:37.603,lng:127.025},{n:'성신여대입구',lat:37.592,lng:127.017},
     {n:'한성대입구',lat:37.588,lng:127.006},{n:'혜화',lat:37.582,lng:127.002},{n:'종각',lat:37.570,lng:126.982},
     {n:'종로3가',lat:37.572,lng:126.992},{n:'종로5가',lat:37.570,lng:127.000},{n:'동대문',lat:37.571,lng:127.010},
     {n:'서울역',lat:37.554,lng:126.972},{n:'남영',lat:37.541,lng:126.972},{n:'용산',lat:37.530,lng:126.965},
-    {n:'노량진',lat:37.514,lng:126.942},{n:'대방',lat:37.512,lng:126.927},{n:'신길',lat:37.517,lng:126.914},
-    {n:'영등포',lat:37.516,lng:126.906},{n:'신도림',lat:37.509,lng:126.891},{n:'구로',lat:37.502,lng:126.882},
-    {n:'가산디지털단지',lat:37.481,lng:126.883},{n:'금천구청',lat:37.457,lng:126.894},{n:'석수',lat:37.452,lng:126.910},
-    {n:'관악',lat:37.448,lng:126.927},{n:'안양',lat:37.401,lng:126.920},{n:'수원',lat:37.266,lng:127.000},
-    {n:'화서',lat:37.287,lng:126.989},{n:'성균관대',lat:37.296,lng:127.001},{n:'의왕',lat:37.340,lng:126.969},
-    {n:'평택',lat:37.009,lng:127.084},{n:'천안',lat:36.811,lng:127.113}
+    {n:'노량진',lat:37.514,lng:126.942},{n:'신길',lat:37.517,lng:126.914},{n:'영등포',lat:37.516,lng:126.906},
+    {n:'신도림',lat:37.509,lng:126.891},{n:'구로',lat:37.502,lng:126.882},{n:'가산디지털단지',lat:37.481,lng:126.883},
+    {n:'금천구청',lat:37.457,lng:126.894},{n:'안양',lat:37.401,lng:126.920},{n:'수원',lat:37.266,lng:127.000}
   ]},
-  '2':{color:'#3a9c3b',stations:[
+  '2':{color:'#2f9e44',stations:[
     {n:'시청',lat:37.564,lng:126.977},{n:'을지로입구',lat:37.566,lng:126.982},{n:'을지로3가',lat:37.566,lng:126.992},
     {n:'을지로4가',lat:37.566,lng:127.000},{n:'동대문역사문화공원',lat:37.565,lng:127.009},{n:'신당',lat:37.563,lng:127.020},
-    {n:'상왕십리',lat:37.561,lng:127.029},{n:'왕십리',lat:37.561,lng:127.038},{n:'한양대',lat:37.555,lng:127.047},
-    {n:'뚝섬',lat:37.547,lng:127.056},{n:'성수',lat:37.544,lng:127.056},{n:'건대입구',lat:37.540,lng:127.070},
-    {n:'구의',lat:37.538,lng:127.084},{n:'강변',lat:37.535,lng:127.094},{n:'잠실나루',lat:37.519,lng:127.098},
-    {n:'잠실',lat:37.513,lng:127.100},{n:'잠실새내',lat:37.511,lng:127.085},{n:'종합운동장',lat:37.511,lng:127.073},
+    {n:'왕십리',lat:37.561,lng:127.038},{n:'한양대',lat:37.555,lng:127.047},{n:'뚝섬',lat:37.547,lng:127.056},
+    {n:'성수',lat:37.544,lng:127.056},{n:'건대입구',lat:37.540,lng:127.070},{n:'강변',lat:37.535,lng:127.094},
+    {n:'잠실나루',lat:37.519,lng:127.098},{n:'잠실',lat:37.513,lng:127.100},{n:'종합운동장',lat:37.511,lng:127.073},
     {n:'삼성',lat:37.508,lng:127.063},{n:'선릉',lat:37.504,lng:127.049},{n:'역삼',lat:37.500,lng:127.036},
     {n:'강남',lat:37.497,lng:127.028},{n:'교대',lat:37.494,lng:127.014},{n:'서초',lat:37.492,lng:127.005},
     {n:'방배',lat:37.482,lng:126.996},{n:'사당',lat:37.476,lng:126.982},{n:'낙성대',lat:37.475,lng:126.964},
-    {n:'서울대입구',lat:37.481,lng:126.953},{n:'봉천',lat:37.481,lng:126.939},{n:'신림',lat:37.485,lng:126.930},
-    {n:'신대방',lat:37.488,lng:126.914},{n:'구로디지털단지',lat:37.485,lng:126.901},{n:'대림',lat:37.493,lng:126.896},
-    {n:'신도림',lat:37.509,lng:126.891},{n:'문래',lat:37.518,lng:126.896},{n:'영등포구청',lat:37.526,lng:126.896},
-    {n:'당산',lat:37.534,lng:126.904},{n:'합정',lat:37.549,lng:126.914},{n:'홍대입구',lat:37.557,lng:126.924},
-    {n:'신촌',lat:37.555,lng:126.937},{n:'이대',lat:37.556,lng:126.947},{n:'아현',lat:37.558,lng:126.956},
-    {n:'충정로',lat:37.560,lng:126.965},{n:'시청',lat:37.564,lng:126.977}
+    {n:'서울대입구',lat:37.481,lng:126.953},{n:'신림',lat:37.485,lng:126.930},{n:'신도림',lat:37.509,lng:126.891},
+    {n:'문래',lat:37.518,lng:126.896},{n:'영등포구청',lat:37.526,lng:126.896},{n:'당산',lat:37.534,lng:126.904},
+    {n:'합정',lat:37.549,lng:126.914},{n:'홍대입구',lat:37.557,lng:126.924},{n:'신촌',lat:37.555,lng:126.937},
+    {n:'이대',lat:37.556,lng:126.947},{n:'아현',lat:37.558,lng:126.956},{n:'충정로',lat:37.560,lng:126.965}
   ]},
-  '3':{color:'#f5771a',stations:[
-    {n:'대화',lat:37.669,lng:126.762},{n:'주엽',lat:37.665,lng:126.775},{n:'정발산',lat:37.661,lng:126.787},
-    {n:'마두',lat:37.656,lng:126.793},{n:'백석',lat:37.641,lng:126.800},{n:'대곡',lat:37.634,lng:126.796},
-    {n:'화정',lat:37.631,lng:126.814},{n:'원당',lat:37.632,lng:126.826},{n:'삼송',lat:37.643,lng:126.875},
-    {n:'지축',lat:37.643,lng:126.902},{n:'구파발',lat:37.642,lng:126.918},{n:'연신내',lat:37.619,lng:126.921},
-    {n:'불광',lat:37.611,lng:126.929},{n:'녹번',lat:37.600,lng:126.934},{n:'홍제',lat:37.589,lng:126.944},
-    {n:'무악재',lat:37.580,lng:126.948},{n:'독립문',lat:37.574,lng:126.961},{n:'경복궁',lat:37.576,lng:126.974},
-    {n:'안국',lat:37.578,lng:126.985},{n:'종로3가',lat:37.572,lng:126.992},{n:'을지로3가',lat:37.566,lng:126.992},
-    {n:'충무로',lat:37.561,lng:126.994},{n:'동대입구',lat:37.558,lng:127.002},{n:'약수',lat:37.555,lng:127.010},
-    {n:'금호',lat:37.549,lng:127.019},{n:'옥수',lat:37.540,lng:127.018},{n:'압구정',lat:37.527,lng:127.028},
-    {n:'신사',lat:37.519,lng:127.020},{n:'잠원',lat:37.516,lng:127.011},{n:'고속터미널',lat:37.505,lng:127.005},
-    {n:'교대',lat:37.494,lng:127.014},{n:'남부터미널',lat:37.486,lng:127.016},{n:'양재',lat:37.484,lng:127.034},
-    {n:'매봉',lat:37.481,lng:127.048},{n:'도곡',lat:37.494,lng:127.042},{n:'대치',lat:37.494,lng:127.059},
-    {n:'학여울',lat:37.494,lng:127.074},{n:'대청',lat:37.494,lng:127.087},{n:'일원',lat:37.494,lng:127.097},
-    {n:'수서',lat:37.487,lng:127.103},{n:'가락시장',lat:37.493,lng:127.117},{n:'경찰병원',lat:37.497,lng:127.124},
-    {n:'오금',lat:37.502,lng:127.130}
+  '3':{color:'#e8590c',stations:[
+    {n:'대화',lat:37.669,lng:126.762},{n:'마두',lat:37.656,lng:126.793},{n:'백석',lat:37.641,lng:126.800},
+    {n:'화정',lat:37.631,lng:126.814},{n:'삼송',lat:37.643,lng:126.875},{n:'구파발',lat:37.642,lng:126.918},
+    {n:'연신내',lat:37.619,lng:126.921},{n:'불광',lat:37.611,lng:126.929},{n:'홍제',lat:37.589,lng:126.944},
+    {n:'독립문',lat:37.574,lng:126.961},{n:'경복궁',lat:37.576,lng:126.974},{n:'안국',lat:37.578,lng:126.985},
+    {n:'종로3가',lat:37.572,lng:126.992},{n:'충무로',lat:37.561,lng:126.994},{n:'약수',lat:37.555,lng:127.010},
+    {n:'옥수',lat:37.540,lng:127.018},{n:'압구정',lat:37.527,lng:127.028},{n:'신사',lat:37.519,lng:127.020},
+    {n:'고속터미널',lat:37.505,lng:127.005},{n:'교대',lat:37.494,lng:127.014},{n:'양재',lat:37.484,lng:127.034},
+    {n:'수서',lat:37.487,lng:127.103},{n:'오금',lat:37.502,lng:127.130}
   ]},
-  '4':{color:'#3a71c1',stations:[
-    {n:'당고개',lat:37.668,lng:127.136},{n:'상계',lat:37.655,lng:127.063},{n:'노원',lat:37.655,lng:127.056},
-    {n:'창동',lat:37.652,lng:127.047},{n:'수유',lat:37.638,lng:127.025},{n:'미아사거리',lat:37.614,lng:127.028},
-    {n:'길음',lat:37.603,lng:127.025},{n:'성신여대입구',lat:37.592,lng:127.017},{n:'한성대입구',lat:37.588,lng:127.006},
-    {n:'혜화',lat:37.582,lng:127.002},{n:'동대문',lat:37.571,lng:127.010},{n:'동대문역사문화공원',lat:37.565,lng:127.009},
-    {n:'충무로',lat:37.561,lng:126.994},{n:'명동',lat:37.560,lng:126.986},{n:'회현',lat:37.557,lng:126.981},
-    {n:'서울역',lat:37.554,lng:126.972},{n:'숙대입구',lat:37.545,lng:126.972},{n:'삼각지',lat:37.535,lng:126.971},
-    {n:'이촌',lat:37.517,lng:126.965},{n:'동작',lat:37.508,lng:126.978},{n:'이수',lat:37.487,lng:126.982},
-    {n:'사당',lat:37.476,lng:126.982},{n:'남태령',lat:37.463,lng:126.989},{n:'선바위',lat:37.458,lng:127.003},
-    {n:'과천',lat:37.430,lng:127.002},{n:'인덕원',lat:37.387,lng:127.034},{n:'평촌',lat:37.378,lng:126.963},
-    {n:'범계',lat:37.388,lng:126.954},{n:'금정',lat:37.380,lng:126.919},{n:'산본',lat:37.361,lng:126.930},
+  '4':{color:'#4dabf7',stations:[
+    {n:'당고개',lat:37.668,lng:127.136},{n:'노원',lat:37.655,lng:127.056},{n:'창동',lat:37.652,lng:127.047},
+    {n:'수유',lat:37.638,lng:127.025},{n:'미아사거리',lat:37.614,lng:127.028},{n:'길음',lat:37.603,lng:127.025},
+    {n:'성신여대입구',lat:37.592,lng:127.017},{n:'혜화',lat:37.582,lng:127.002},{n:'동대문',lat:37.571,lng:127.010},
+    {n:'동대문역사문화공원',lat:37.565,lng:127.009},{n:'명동',lat:37.560,lng:126.986},{n:'서울역',lat:37.554,lng:126.972},
+    {n:'삼각지',lat:37.535,lng:126.971},{n:'이촌',lat:37.517,lng:126.965},{n:'동작',lat:37.508,lng:126.978},
+    {n:'사당',lat:37.476,lng:126.982},{n:'과천',lat:37.430,lng:127.002},{n:'금정',lat:37.380,lng:126.919},
     {n:'오이도',lat:37.345,lng:126.716}
   ]},
-  '5':{color:'#8b50a4',stations:[
+  '5':{color:'#9c36b5',stations:[
     {n:'방화',lat:37.571,lng:126.801},{n:'김포공항',lat:37.563,lng:126.802},{n:'마곡',lat:37.558,lng:126.839},
-    {n:'발산',lat:37.558,lng:126.850},{n:'우장산',lat:37.553,lng:126.861},{n:'화곡',lat:37.548,lng:126.850},
-    {n:'까치산',lat:37.540,lng:126.851},{n:'신정',lat:37.523,lng:126.870},{n:'목동',lat:37.526,lng:126.875},
-    {n:'오목교',lat:37.523,lng:126.883},{n:'양평',lat:37.525,lng:126.894},{n:'영등포구청',lat:37.526,lng:126.896},
-    {n:'영등포시장',lat:37.518,lng:126.904},{n:'신길',lat:37.517,lng:126.914},{n:'여의도',lat:37.522,lng:126.924},
-    {n:'여의나루',lat:37.527,lng:126.934},{n:'마포',lat:37.538,lng:126.948},{n:'공덕',lat:37.544,lng:126.952},
-    {n:'애오개',lat:37.548,lng:126.957},{n:'충정로',lat:37.560,lng:126.965},{n:'서대문',lat:37.572,lng:126.966},
-    {n:'광화문',lat:37.571,lng:126.977},{n:'종로3가',lat:37.572,lng:126.992},{n:'을지로4가',lat:37.566,lng:127.000},
-    {n:'동대문역사문화공원',lat:37.565,lng:127.009},{n:'청구',lat:37.561,lng:127.019},{n:'행당',lat:37.553,lng:127.038},
-    {n:'왕십리',lat:37.561,lng:127.038},{n:'마장',lat:37.563,lng:127.050},{n:'답십리',lat:37.567,lng:127.060},
-    {n:'장한평',lat:37.567,lng:127.071},{n:'군자',lat:37.553,lng:127.079},{n:'아차산',lat:37.552,lng:127.088},
-    {n:'광나루',lat:37.546,lng:127.101},{n:'천호',lat:37.538,lng:127.124},{n:'강동',lat:37.530,lng:127.127},
-    {n:'둔촌동',lat:37.515,lng:127.129},{n:'올림픽공원',lat:37.514,lng:127.121},{n:'방이',lat:37.509,lng:127.119},
-    {n:'오금',lat:37.502,lng:127.130},{n:'개롱',lat:37.486,lng:127.138},{n:'거여',lat:37.479,lng:127.148},
-    {n:'마천',lat:37.490,lng:127.158}
+    {n:'화곡',lat:37.548,lng:126.850},{n:'목동',lat:37.526,lng:126.875},{n:'영등포구청',lat:37.526,lng:126.896},
+    {n:'신길',lat:37.517,lng:126.914},{n:'여의도',lat:37.522,lng:126.924},{n:'마포',lat:37.538,lng:126.948},
+    {n:'공덕',lat:37.544,lng:126.952},{n:'광화문',lat:37.571,lng:126.977},{n:'종로3가',lat:37.572,lng:126.992},
+    {n:'동대문역사문화공원',lat:37.565,lng:127.009},{n:'왕십리',lat:37.561,lng:127.038},{n:'군자',lat:37.553,lng:127.079},
+    {n:'천호',lat:37.538,lng:127.124},{n:'강동',lat:37.530,lng:127.127},{n:'마천',lat:37.490,lng:127.158}
   ]},
-  '6':{color:'#c55c1d',stations:[
-    {n:'응암',lat:37.601,lng:126.914},{n:'역촌',lat:37.603,lng:126.921},{n:'불광',lat:37.611,lng:126.929},
-    {n:'독바위',lat:37.616,lng:126.936},{n:'연신내',lat:37.619,lng:126.921},{n:'구산',lat:37.619,lng:126.913},
-    {n:'새절',lat:37.593,lng:126.907},{n:'증산',lat:37.582,lng:126.911},{n:'디지털미디어시티',lat:37.576,lng:126.897},
-    {n:'월드컵경기장',lat:37.570,lng:126.897},{n:'마포구청',lat:37.565,lng:126.906},{n:'망원',lat:37.556,lng:126.911},
-    {n:'합정',lat:37.549,lng:126.914},{n:'상수',lat:37.548,lng:126.924},{n:'광흥창',lat:37.541,lng:126.934},
-    {n:'대흥',lat:37.549,lng:126.942},{n:'공덕',lat:37.544,lng:126.952},{n:'효창공원앞',lat:37.539,lng:126.962},
-    {n:'삼각지',lat:37.535,lng:126.971},{n:'녹사평',lat:37.534,lng:126.988},{n:'이태원',lat:37.534,lng:126.994},
-    {n:'한강진',lat:37.528,lng:127.003},{n:'버티고개',lat:37.549,lng:127.009},{n:'약수',lat:37.555,lng:127.010},
-    {n:'청구',lat:37.561,lng:127.019},{n:'신당',lat:37.563,lng:127.020},{n:'동묘앞',lat:37.573,lng:127.017},
-    {n:'창신',lat:37.578,lng:127.014},{n:'보문',lat:37.582,lng:127.018},{n:'안암',lat:37.585,lng:127.028},
-    {n:'고려대',lat:37.589,lng:127.032},{n:'월곡',lat:37.599,lng:127.040},{n:'상월곡',lat:37.601,lng:127.047},
-    {n:'돌곶이',lat:37.603,lng:127.056},{n:'석계',lat:37.612,lng:127.065},{n:'태릉입구',lat:37.627,lng:127.073},
-    {n:'화랑대',lat:37.626,lng:127.083},{n:'봉화산',lat:37.607,lng:127.085},{n:'신내',lat:37.612,lng:127.099}
+  '6':{color:'#d9480f',stations:[
+    {n:'응암',lat:37.601,lng:126.914},{n:'불광',lat:37.611,lng:126.929},{n:'연신내',lat:37.619,lng:126.921},
+    {n:'디지털미디어시티',lat:37.576,lng:126.897},{n:'합정',lat:37.549,lng:126.914},{n:'상수',lat:37.548,lng:126.924},
+    {n:'공덕',lat:37.544,lng:126.952},{n:'삼각지',lat:37.535,lng:126.971},{n:'이태원',lat:37.534,lng:126.994},
+    {n:'약수',lat:37.555,lng:127.010},{n:'신당',lat:37.563,lng:127.020},{n:'동묘앞',lat:37.573,lng:127.017},
+    {n:'고려대',lat:37.589,lng:127.032},{n:'태릉입구',lat:37.627,lng:127.073},{n:'신내',lat:37.612,lng:127.099}
   ]},
-  '7':{color:'#747f00',stations:[
-    {n:'장암',lat:37.693,lng:127.048},{n:'도봉산',lat:37.700,lng:127.040},{n:'수락산',lat:37.672,lng:127.051},
-    {n:'마들',lat:37.660,lng:127.053},{n:'노원',lat:37.655,lng:127.056},{n:'중계',lat:37.638,lng:127.069},
-    {n:'하계',lat:37.634,lng:127.075},{n:'공릉',lat:37.625,lng:127.086},{n:'태릉입구',lat:37.627,lng:127.073},
-    {n:'먹골',lat:37.612,lng:127.086},{n:'중화',lat:37.603,lng:127.085},{n:'상봉',lat:37.598,lng:127.092},
-    {n:'면목',lat:37.581,lng:127.090},{n:'사가정',lat:37.573,lng:127.092},{n:'용마산',lat:37.568,lng:127.087},
-    {n:'중곡',lat:37.560,lng:127.089},{n:'군자',lat:37.553,lng:127.079},{n:'어린이대공원',lat:37.548,lng:127.073},
-    {n:'건대입구',lat:37.540,lng:127.070},{n:'뚝섬유원지',lat:37.531,lng:127.062},{n:'청담',lat:37.522,lng:127.047},
-    {n:'강남구청',lat:37.517,lng:127.044},{n:'학동',lat:37.513,lng:127.040},{n:'논현',lat:37.511,lng:127.024},
-    {n:'반포',lat:37.504,lng:127.001},{n:'고속터미널',lat:37.505,lng:127.005},{n:'내방',lat:37.494,lng:126.997},
-    {n:'이수',lat:37.487,lng:126.982},{n:'남성',lat:37.481,lng:126.979},{n:'숭실대입구',lat:37.496,lng:126.963},
-    {n:'상도',lat:37.503,lng:126.952},{n:'장승배기',lat:37.507,lng:126.941},{n:'신대방삼거리',lat:37.499,lng:126.921},
-    {n:'보라매',lat:37.494,lng:126.920},{n:'신풍',lat:37.513,lng:126.906},{n:'대림',lat:37.493,lng:126.896},
-    {n:'남구로',lat:37.480,lng:126.883},{n:'가산디지털단지',lat:37.481,lng:126.883},{n:'철산',lat:37.477,lng:126.857},
-    {n:'광명사거리',lat:37.477,lng:126.845},{n:'천왕',lat:37.479,lng:126.823},{n:'온수',lat:37.486,lng:126.817},
-    {n:'까치울',lat:37.497,lng:126.803},{n:'부천종합운동장',lat:37.502,lng:126.792},{n:'부천시청',lat:37.504,lng:126.765},
-    {n:'상동',lat:37.508,lng:126.757},{n:'삼산체육관',lat:37.521,lng:126.740},{n:'굴포천',lat:37.529,lng:126.725},
-    {n:'부평구청',lat:37.507,lng:126.724},{n:'석남',lat:37.485,lng:126.710}
+  '7':{color:'#5c940d',stations:[
+    {n:'장암',lat:37.693,lng:127.048},{n:'도봉산',lat:37.700,lng:127.040},{n:'노원',lat:37.655,lng:127.056},
+    {n:'중곡',lat:37.560,lng:127.089},{n:'군자',lat:37.553,lng:127.079},{n:'건대입구',lat:37.540,lng:127.070},
+    {n:'청담',lat:37.522,lng:127.047},{n:'강남구청',lat:37.517,lng:127.044},{n:'논현',lat:37.511,lng:127.024},
+    {n:'고속터미널',lat:37.505,lng:127.005},{n:'이수',lat:37.487,lng:126.982},{n:'대림',lat:37.493,lng:126.896},
+    {n:'가산디지털단지',lat:37.481,lng:126.883},{n:'부천시청',lat:37.504,lng:126.765},{n:'석남',lat:37.485,lng:126.710}
   ]},
-  '8':{color:'#e31c58',stations:[
-    {n:'암사',lat:37.546,lng:127.130},{n:'천호',lat:37.538,lng:127.124},{n:'강동구청',lat:37.530,lng:127.119},
-    {n:'몽촌토성',lat:37.516,lng:127.119},{n:'잠실',lat:37.513,lng:127.100},{n:'석촌',lat:37.502,lng:127.103},
-    {n:'송파',lat:37.497,lng:127.112},{n:'가락시장',lat:37.493,lng:127.117},{n:'문정',lat:37.487,lng:127.128},
-    {n:'장지',lat:37.477,lng:127.127},{n:'복정',lat:37.468,lng:127.134},{n:'산성',lat:37.446,lng:127.134},
-    {n:'남한산성입구',lat:37.441,lng:127.145},{n:'단대오거리',lat:37.428,lng:127.131},{n:'신흥',lat:37.422,lng:127.140},
-    {n:'수진',lat:37.421,lng:127.148},{n:'모란',lat:37.419,lng:127.129}
+  '8':{color:'#e03131',stations:[
+    {n:'암사',lat:37.546,lng:127.130},{n:'천호',lat:37.538,lng:127.124},{n:'잠실',lat:37.513,lng:127.100},
+    {n:'석촌',lat:37.502,lng:127.103},{n:'가락시장',lat:37.493,lng:127.117},{n:'복정',lat:37.468,lng:127.134},
+    {n:'모란',lat:37.419,lng:127.129}
   ]},
-  '9':{color:'#bfa100',stations:[
-    {n:'개화',lat:37.572,lng:126.797},{n:'김포공항',lat:37.563,lng:126.802},{n:'공항시장',lat:37.558,lng:126.816},
-    {n:'신방화',lat:37.557,lng:126.826},{n:'마곡나루',lat:37.570,lng:126.830},{n:'가양',lat:37.559,lng:126.854},
-    {n:'증미',lat:37.553,lng:126.865},{n:'등촌',lat:37.549,lng:126.875},{n:'염창',lat:37.548,lng:126.888},
-    {n:'당산',lat:37.534,lng:126.904},{n:'국회의사당',lat:37.528,lng:126.918},{n:'여의도',lat:37.522,lng:126.924},
-    {n:'노량진',lat:37.514,lng:126.942},{n:'흑석',lat:37.509,lng:126.963},{n:'동작',lat:37.508,lng:126.978},
-    {n:'구반포',lat:37.505,lng:126.992},{n:'신반포',lat:37.506,lng:127.002},{n:'고속터미널',lat:37.505,lng:127.005},
-    {n:'사평',lat:37.504,lng:127.015},{n:'신논현',lat:37.505,lng:127.024},{n:'언주',lat:37.508,lng:127.038},
-    {n:'선정릉',lat:37.509,lng:127.048},{n:'삼성중앙',lat:37.509,lng:127.059},{n:'봉은사',lat:37.514,lng:127.059},
-    {n:'종합운동장',lat:37.511,lng:127.073},{n:'삼전',lat:37.498,lng:127.086},{n:'석촌고분',lat:37.503,lng:127.100},
-    {n:'석촌',lat:37.502,lng:127.103},{n:'송파나루',lat:37.513,lng:127.113},{n:'한성백제',lat:37.523,lng:127.119},
-    {n:'올림픽공원',lat:37.514,lng:127.121},{n:'둔촌오륜',lat:37.511,lng:127.133},{n:'중앙보훈병원',lat:37.509,lng:127.147}
+  '9':{color:'#e67700',stations:[
+    {n:'개화',lat:37.572,lng:126.797},{n:'김포공항',lat:37.563,lng:126.802},{n:'가양',lat:37.559,lng:126.854},
+    {n:'당산',lat:37.534,lng:126.904},{n:'여의도',lat:37.522,lng:126.924},{n:'노량진',lat:37.514,lng:126.942},
+    {n:'동작',lat:37.508,lng:126.978},{n:'고속터미널',lat:37.505,lng:127.005},{n:'신논현',lat:37.505,lng:127.024},
+    {n:'선정릉',lat:37.509,lng:127.048},{n:'종합운동장',lat:37.511,lng:127.073},{n:'석촌',lat:37.502,lng:127.103},
+    {n:'올림픽공원',lat:37.514,lng:127.121},{n:'중앙보훈병원',lat:37.509,lng:127.147}
   ]}
 };
 
-// 상태
-let map, layerGroups = {}, activeLines = new Set(['2','3','4','5']);
-let highlightMarker = null;
-let currentStation = '강남';
-let autoTimer = null;
-
-/* ── 지도 초기화 ── */
-function initMap() {
-  map = L.map('map', { center:[37.540,127.000], zoom:11, zoomControl:true });
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© OpenStreetMap contributors', maxZoom:18
-  }).addTo(map);
-
-  Object.keys(LINES).forEach(ln => {
-    layerGroups[ln] = L.layerGroup();
-    drawLineOnMap(ln);
-    if (activeLines.has(ln)) {
-      layerGroups[ln].addTo(map);
+/* ── 전체 역 목록 (자동완성용) ── */
+const ALL_STATIONS = [];
+Object.entries(LINES).forEach(([ln, ld]) => {
+  ld.stations.forEach(st => {
+    if (!ALL_STATIONS.find(s => s.n === st.n)) {
+      ALL_STATIONS.push({n:st.n, ln, color:ld.color});
     }
   });
+});
 
-  // 초기 버튼 상태 동기화 (1,6,7,8,9 비활성)
-  ['1','6','7','8','9'].forEach(ln => {
-    const btn = document.getElementById('btn-line'+ln);
-    if (btn) btn.classList.remove('active');
-    const leg = document.getElementById('leg-'+ln);
-    if (leg) leg.style.opacity = '0.35';
+/* ── 상태 ── */
+let map, layerGroups={}, activeLines=new Set(['1','2','3','4','5','6','7','8','9']);
+let hlMarker=null, currentStation='강남', autoTimer=null, congTimer=null;
+let congData={}, currentTab='line', lastRows=[];
+let allLinesOn=true;
+
+/* ── 시계 ── */
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    [n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+}
+setInterval(tick,1000); tick();
+
+/* ── 토스트 ── */
+function toast(msg,type='info',ms=3000){
+  const w=document.getElementById('toastWrap');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;el.textContent=msg;
+  w.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(12px)';el.style.transition='all .3s';setTimeout(()=>el.remove(),300)},ms);
+}
+
+/* ── 자동완성 ── */
+const inp=document.getElementById('stationInput');
+const acBox=document.getElementById('autocomplete');
+inp.addEventListener('input',()=>{
+  const q=inp.value.trim();
+  if(!q){acBox.classList.remove('show');return;}
+  const matches=ALL_STATIONS.filter(s=>s.n.includes(q)).slice(0,6);
+  if(!matches.length){acBox.classList.remove('show');return;}
+  acBox.innerHTML=matches.map(s=>`
+    <div class="ac-item" onclick="quickSearch('${s.n}')">
+      <span class="ac-dot" style="background:${s.color}"></span>
+      <span class="ac-name">${s.n}역</span>
+      <span class="ac-line">${LINE_META[s.ln]?.name||''}</span>
+    </div>`).join('');
+  acBox.classList.add('show');
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))acBox.classList.remove('show');});
+inp.addEventListener('keypress',e=>{if(e.key==='Enter')searchStation();});
+
+/* ── 지도 초기화 ── */
+function initMap(){
+  map=L.map('map',{center:[37.545,127.00],zoom:11});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap',maxZoom:18
+  }).addTo(map);
+  Object.keys(LINES).forEach(ln=>{
+    layerGroups[ln]=L.layerGroup();
+    drawLine(ln);
+    layerGroups[ln].addTo(map);
   });
 }
 
-function drawLineOnMap(ln) {
-  const ld = LINES[ln];
-  const color = ld.color;
-
-  // 폴리라인 (노선)
-  const latlngs = ld.stations.map(s => [s.lat, s.lng]);
-  const poly = L.polyline(latlngs, { color, weight:5, opacity:.85, lineJoin:'round' });
+function drawLine(ln){
+  const ld=LINES[ln], color=ld.color;
+  const poly=L.polyline(ld.stations.map(s=>[s.lat,s.lng]),{color,weight:5,opacity:.85});
   layerGroups[ln].addLayer(poly);
-
-  // 역 마커
-  ld.stations.forEach(st => {
-    const icon = L.divIcon({
-      html:`<span style="font-family:'Noto Sans KR',sans-serif;font-size:10px;font-weight:700;color:${color};text-shadow:0 0 4px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;letter-spacing:-.2px;">${st.n}</span>`,
-      className:'custom-marker-icon', iconSize:[90,16], iconAnchor:[8,8], popupAnchor:[0,-10]
+  ld.stations.forEach(st=>{
+    const icon=L.divIcon({
+      html:`<span style="font-family:'Pretendard',sans-serif;font-size:10px;font-weight:800;color:${color};text-shadow:0 0 5px rgba(0,0,0,1),0 1px 4px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;">${st.n}</span>`,
+      className:'custom-marker-icon',iconSize:[80,14],iconAnchor:[6,7],popupAnchor:[0,-10]
     });
-    const marker = L.marker([st.lat, st.lng], {icon});
-    marker.bindPopup(`
-      <div style="text-align:center;min-width:140px;">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${color};color:#fff;font-weight:900;font-size:12px;margin-bottom:6px;">${ln}</div>
-        <div style="font-weight:700;font-size:14px;margin-bottom:2px;">${st.n}역</div>
+    const m=L.marker([st.lat,st.lng],{icon});
+    m.bindPopup(`
+      <div style="text-align:center;min-width:150px;">
+        <div style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:${color};color:#fff;font-weight:900;font-size:12px;margin-bottom:8px;">${ln}</div>
+        <div style="font-weight:800;font-size:15px;margin-bottom:2px;">${st.n}역</div>
         <div style="color:#94a3b8;font-size:11px;margin-bottom:10px;">${ln}호선</div>
-        <button onclick="mapClick('${st.n}','${ln}')" style="width:100%;background:#00d4ff;color:#000;border:none;border-radius:7px;padding:7px 0;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+        <button onclick="mapClick('${st.n}')" style="width:100%;background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#000;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Pretendard',sans-serif;">
           🔍 실시간 도착 조회
         </button>
-      </div>
-    `, { maxWidth:200 });
-
-    marker.on('mouseover', function() { this.openPopup(); });
-    layerGroups[ln].addLayer(marker);
+      </div>`,{maxWidth:200});
+    m.on('mouseover',function(){this.openPopup();});
+    layerGroups[ln].addLayer(m);
   });
 }
 
-function mapClick(stName, ln) {
-  currentStation = stName;
-  document.getElementById('stationInput').value = stName;
-  map.closePopup();
-  fetchArrival(stName);
+function mapClick(st){
+  currentStation=st;inp.value=st;map.closePopup();
+  fetchArrival(st);toast(`${st}역 조회 중...`,'info',1500);
 }
 
-function toggleLine(ln) {
-  const btn = document.getElementById('btn-line'+ln);
-  const leg = document.getElementById('leg-'+ln);
-
-  if (activeLines.has(ln)) {
-    activeLines.delete(ln);
-    map.removeLayer(layerGroups[ln]);
-    if (btn) btn.classList.remove('active');
-    if (leg) leg.style.opacity = '0.35';
+function toggleLine(ln){
+  const btn=document.getElementById('fb'+ln);
+  if(activeLines.has(ln)){
+    activeLines.delete(ln);map.removeLayer(layerGroups[ln]);
+    btn&&btn.classList.remove('on');
   } else {
-    activeLines.add(ln);
-    layerGroups[ln].addTo(map);
-    if (btn) btn.classList.add('active');
-    if (leg) leg.style.opacity = '1';
+    activeLines.add(ln);layerGroups[ln].addTo(map);
+    btn&&btn.classList.add('on');
   }
 }
 
-function zoomToStation(name) {
-  for (const [ln, ld] of Object.entries(LINES)) {
-    const st = ld.stations.find(s => s.n === name || s.n.startsWith(name));
-    if (st) {
-      map.setView([st.lat, st.lng], 15, { animate:true });
-      // 하이라이트 마커
-      if (highlightMarker) map.removeLayer(highlightMarker);
-      const icon = L.divIcon({
-        html:`<span style="font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:900;color:${ld.color};text-shadow:0 0 6px rgba(0,0,0,1),0 2px 5px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;">${st.n}</span>`,
-        className:'custom-marker-icon', iconSize:[110,22], iconAnchor:[11,11]
+function toggleAllLines(){
+  if(allLinesOn){
+    Object.keys(LINES).forEach(ln=>{if(activeLines.has(ln))toggleLine(ln);});
+    allLinesOn=false;toast('전체 노선 숨김','info',1500);
+  } else {
+    Object.keys(LINES).forEach(ln=>{if(!activeLines.has(ln))toggleLine(ln);});
+    allLinesOn=true;toast('전체 노선 표시','info',1500);
+  }
+}
+
+function toggleMapStyle(){
+  const tiles=document.querySelectorAll('.leaflet-tile');
+  const isLight=tiles[0]?.style.filter.includes('.38');
+  tiles.forEach(t=>{t.style.filter=isLight?'brightness(.7) saturate(.5)':'brightness(.38) saturate(.3) hue-rotate(195deg)';});
+  toast(isLight?'라이트 모드':'다크 모드','info',1500);
+}
+
+function zoomTo(name){
+  for(const [ln,ld] of Object.entries(LINES)){
+    const st=ld.stations.find(s=>s.n===name||s.n.startsWith(name));
+    if(st){
+      map.setView([st.lat,st.lng],15,{animate:true});
+      if(hlMarker)map.removeLayer(hlMarker);
+      const icon=L.divIcon({
+        html:`<span style="font-family:'Pretendard',sans-serif;font-size:13px;font-weight:900;color:${ld.color};text-shadow:0 0 8px rgba(0,0,0,1);white-space:nowrap;pointer-events:none;">${st.n}</span>`,
+        className:'custom-marker-icon',iconSize:[100,16],iconAnchor:[8,8]
       });
-      highlightMarker = L.marker([st.lat, st.lng], { icon, zIndexOffset:2000 }).addTo(map);
-      // 해당 호선이 꺼져 있으면 켜기
-      if (!activeLines.has(ln)) toggleLine(ln);
+      hlMarker=L.marker([st.lat,st.lng],{icon,zIndexOffset:2000}).addTo(map);
+      if(!activeLines.has(ln))toggleLine(ln);
       break;
     }
   }
 }
 
-/* ── 시계 ── */
-function updateClock() {
-  const n = new Date();
-  document.getElementById('clock').textContent =
-    [n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
-}
-setInterval(updateClock, 1000); updateClock();
-
 /* ── 검색 ── */
-function searchStation() {
-  const v = document.getElementById('stationInput').value.trim();
-  if (!v) return;
-  currentStation = v;
-  fetchArrival(v);
-  zoomToStation(v);
+function searchStation(){
+  const v=inp.value.trim();if(!v)return;
+  currentStation=v;acBox.classList.remove('show');
+  fetchArrival(v);zoomTo(v);
 }
-function quickSearch(s) {
-  currentStation = s;
-  document.getElementById('stationInput').value = s;
-  fetchArrival(s);
-  zoomToStation(s);
+function quickSearch(s){
+  currentStation=s;inp.value=s;
+  fetchArrival(s);zoomTo(s);acBox.classList.remove('show');
 }
-function refreshData() { fetchArrival(currentStation); }
-document.getElementById('stationInput').addEventListener('keypress', e => { if(e.key==='Enter') searchStation(); });
+function refreshData(){fetchArrival(currentStation);}
 
 /* ── API ── */
-async function fetchArrival(stName) {
-  const td = document.getElementById('arrivalTable');
-  const rb = document.getElementById('refreshBtn');
-  td.innerHTML = `<div class="loading-state"><div class="loader"></div><span>${stName}역 정보를 불러오는 중...</span></div>`;
-  rb.classList.add('spinning');
-  document.getElementById('stat-station').textContent = stName;
-  document.getElementById('panelStationName').textContent = stName+'역';
-  document.getElementById('stationTitle').textContent = stName+'역';
+async function fetchArrival(st){
+  const body=document.getElementById('arrivalBody');
+  const rb=document.getElementById('refreshBtn');
+  body.innerHTML='<div class="loading-box"><div class="spinner"></div>불러오는 중...</div>';
+  rb.classList.add('spin');
+  document.getElementById('kv-station').textContent=st;
+  document.getElementById('arrivalTitle').textContent=st+'역';
 
-  const url = `${BASE_URL}/${API_KEY}/json/realtimeStationArrival/0/20/${encodeURIComponent(stName)}`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    rb.classList.remove('spinning');
-    renderArrival(data, stName);
-  } catch(e) {
-    rb.classList.remove('spinning');
-    td.innerHTML = `<div class="empty-state">
-      <div class="emoji">⚠️</div>
-      <div style="color:var(--warning);font-weight:600;margin-bottom:6px;">API 호출 오류</div>
-      <div style="font-size:12px;line-height:1.7;">CORS 정책으로 브라우저 직접 호출 시 제한될 수 있습니다.</div>
-      <button onclick="loadSample('${stName}')" style="margin-top:14px;background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">샘플 데이터로 보기</button>
+  const url=`${BASE_URL}/${API_KEY}/json/realtimeStationArrival/0/20/${encodeURIComponent(st)}`;
+  try{
+    const res=await fetch(url);
+    if(!res.ok)throw new Error('Network error');
+    const data=await res.json();
+    rb.classList.remove('spin');
+    renderArrival(data,st);
+  }catch(e){
+    rb.classList.remove('spin');
+    body.innerHTML=`<div class="empty-box">
+      <span class="ei">⚠️</span>
+      <div style="color:var(--yellow);font-weight:700">API 호출 오류</div>
+      <div style="font-size:12px">CORS 정책 또는 서버 오류입니다.</div>
+      <button onclick="loadSample('${st}')" style="margin-top:10px;background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Pretendard',sans-serif;">샘플 데이터 보기</button>
     </div>`;
-    updateStats([]);
+    updateKPI([]);
   }
 }
 
-function renderArrival(data, stName) {
-  const td = document.getElementById('arrivalTable');
-  if (!data.realtimeArrivalList || !data.realtimeArrivalList.length) {
-    td.innerHTML = `<div class="empty-state"><div class="emoji">🔍</div><div>${data.RESULT?.MESSAGE||'해당 역 실시간 정보가 없습니다.'}</div></div>`;
-    updateStats([]); return;
+function renderArrival(data,st){
+  const body=document.getElementById('arrivalBody');
+  if(!data.realtimeArrivalList||!data.realtimeArrivalList.length){
+    body.innerHTML=`<div class="empty-box"><span class="ei">🔍</span><div>${data.errorMessage?.message||data.RESULT?.MESSAGE||'실시간 정보 없음'}</div></div>`;
+    updateKPI([]);return;
   }
-  const rows = data.realtimeArrivalList;
-  updateStats(rows);
-  updateCongestion(rows); // ← 혼잡도 업데이트
-  const r0 = rows[0];
-  const ln = r0.subwayId ? r0.subwayId.replace('10','') : '2';
-  const lc = LINE_META[ln]?.color || '#3a9c3b';
-  document.getElementById('stationCircle').style.background = lc;
-  document.getElementById('stationCircle').textContent = ln;
-  document.getElementById('stationLineInfo').textContent = r0.subwayNm || '서울 지하철';
-  document.getElementById('stationCode').textContent = r0.statnId || '—';
-  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('ko-KR');
+  const rows=data.realtimeArrivalList;
+  lastRows=rows;
+  updateKPI(rows);
+  updateStationInfo(rows,st);
+  updateCongestion(rows);
 
-  let html = `<table><thead><tr><th>호선</th><th>역명</th><th>방향·행선지</th><th>도착 예정</th><th>현재 위치</th><th>상태</th></tr></thead><tbody>`;
-  rows.forEach(row => {
-    const ln2 = row.subwayId ? row.subwayId.replace('10','') : '?';
-    const lc2 = LINE_META[ln2]?.color || '#64748b';
-    const sec = parseInt(row.barvlDt || '0');
-    let tc = 'normal', td2 = '—';
-    if (row.barvlDt) {
-      if (sec<=60) { td2='진입 중'; tc='soon'; }
-      else if (sec===0) { td2='도착'; tc='soon'; }
-      else { const m=Math.floor(sec/60),s=sec%60; td2=`${m}분 ${s}초`; tc=m<=2?'close':'normal'; }
+  const now=new Date().toLocaleTimeString('ko-KR');
+  document.getElementById('lastUpd').textContent=now+'갱신';
+  document.getElementById('stUpd').textContent=now;
+
+  let html=`<table><thead><tr>
+    <th>호선</th><th>역명</th><th>방향 · 행선지</th>
+    <th>도착 예정</th><th>현재 위치</th><th>상태</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach((r,i)=>{
+    const ln=r.subwayId?r.subwayId.replace('10',''):'?';
+    const lc=LINE_META[ln]?.color||'#64748b';
+    const sec=parseInt(r.barvlDt||'0');
+    let cls='ac-ok',td='—';
+    if(r.barvlDt){
+      if(sec<=0){td='도착';cls='ac-arrive';}
+      else if(sec<=60){td='진입 중';cls='ac-soon';}
+      else if(sec<=120){td=`${Math.floor(sec/60)}분 ${sec%60}초`;cls='ac-close';}
+      else{td=`${Math.floor(sec/60)}분 ${sec%60}초`;cls='ac-ok';}
     }
-    const sm = {'0':'<span class="status-badge running">운행중</span>','1':'<span class="status-badge entered">진입</span>','2':'<span class="status-badge arrived">도착</span>','3':'<span class="status-badge running">출발</span>'};
-    html += `<tr>
-      <td><span class="line-tag" style="background:${lc2};">${ln2}</span></td>
-      <td style="font-weight:600;">${row.statnNm||stName}</td>
-      <td><div style="font-weight:600;">→ ${row.bstatnNm||row.arvlMsg3||''}</div><div style="font-size:10px;color:var(--text-muted);">${row.trainLineNm||''}</div></td>
-      <td><span class="arrive-time ${tc}">${td2}</span></td>
-      <td style="font-size:11px;color:var(--text-muted);">${row.arvlMsg2||''}</td>
-      <td>${sm[row.arvlCd]||sm['0']}</td>
+    const sm={'0':'<span class="status-pill sp-run">운행중</span>',
+              '1':'<span class="status-pill sp-in">진입</span>',
+              '2':'<span class="status-pill sp-arr">도착</span>',
+              '3':'<span class="status-pill sp-run">출발</span>',
+              '5':'<span class="status-pill sp-arr">전역도착</span>'};
+    html+=`<tr style="animation-delay:${i*.04}s">
+      <td><span class="line-circle" style="background:${lc}">${ln}</span></td>
+      <td style="font-weight:700">${r.statnNm||st}</td>
+      <td>
+        <div style="font-weight:700;font-size:12px">→ ${r.bstatnNm||r.arvlMsg3||''}</div>
+        <div style="font-size:10px;color:var(--text3)">${r.trainLineNm||''}</div>
+      </td>
+      <td><span class="arrive-chip ${cls}">${td}</span></td>
+      <td style="font-size:11px;color:var(--text2);max-width:120px">${r.arvlMsg2||''}</td>
+      <td>${sm[r.arvlCd]||sm['0']}</td>
     </tr>`;
   });
-  document.getElementById('arrivalTable').innerHTML = html+'</tbody></table>';
+  body.innerHTML=html+'</tbody></table>';
 }
 
-function updateStats(rows) {
-  document.getElementById('stat-total').textContent = rows.length||'0';
-  if (rows.length) {
-    const times = rows.map(r=>parseInt(r.barvlDt||'9999')).filter(t=>!isNaN(t)&&t>0);
-    const mn = times.length ? Math.min(...times) : null;
-    document.getElementById('stat-min').textContent = mn!=null ? (Math.floor(mn/60)||'<1') : '—';
-    document.getElementById('stat-running').textContent = rows.filter(r=>r.arvlCd==='0'||r.arvlCd==='3').length||rows.length;
+function updateKPI(rows){
+  document.getElementById('kv-total').textContent=rows.length||'0';
+  if(rows.length){
+    const times=rows.map(r=>parseInt(r.barvlDt||'9999')).filter(t=>!isNaN(t)&&t>0);
+    const mn=times.length?Math.min(...times):null;
+    document.getElementById('kv-min').textContent=mn!=null?(Math.floor(mn/60)||'<1'):'—';
+    document.getElementById('kv-run').textContent=rows.filter(r=>['0','3'].includes(r.arvlCd)).length||rows.length;
   } else {
-    document.getElementById('stat-min').textContent = '—';
-    document.getElementById('stat-running').textContent = '0';
+    document.getElementById('kv-min').textContent='—';
+    document.getElementById('kv-run').textContent='0';
   }
 }
 
-function loadSample(stn) {
+function updateStationInfo(rows,st){
+  if(!rows.length)return;
+  const r0=rows[0];
+  const ln=r0.subwayId?r0.subwayId.replace('10',''):'2';
+  const lc=LINE_META[ln]?.color||'#2f9e44';
+  document.getElementById('stBadge').style.background=lc;
+  document.getElementById('stBadge').textContent=ln;
+  document.getElementById('stName').textContent=st+'역';
+  document.getElementById('stLine').textContent=r0.subwayNm||LINE_META[ln]?.name||'';
+  document.getElementById('stCode').textContent=r0.statnId||'—';
+  const lns=[...new Set(rows.map(r=>r.subwayId?.replace('10','')).filter(Boolean))];
+  document.getElementById('stTransfer').textContent=lns.length>1?lns.join('·')+'호선':'—';
+}
+
+/* ── 즐겨찾기 ── */
+function toggleFav(e,st){
+  e.stopPropagation();
+  const star=e.target;
+  star.classList.toggle('active');
+  toast(star.classList.contains('active')?`⭐ ${st}역 즐겨찾기 추가`:`${st}역 즐겨찾기 해제`,'success',2000);
+}
+
+/* ── 데이터 내보내기 (CSV) ── */
+function exportData(){
+  if(!lastRows.length){toast('먼저 역을 검색하세요','error');return;}
+  const h=['호선','역명','행선지','도착예정(초)','현재위치','상태'];
+  const rows=lastRows.map(r=>[
+    r.subwayId?.replace('10','')||'',r.statnNm||'',r.bstatnNm||'',
+    r.barvlDt||'',r.arvlMsg2||'',r.arvlCd||''
+  ]);
+  const csv=[h,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download=`${currentStation}_${new Date().toISOString().slice(0,16).replace('T','_')}.csv`;
+  a.click();toast('CSV 다운로드 완료!','success');
+}
+
+/* ── 혼잡도 ── */
+function getCongLvl(p){
+  if(p<40)return{label:'여유',cls:'cb-smooth',color:'var(--green)'};
+  if(p<65)return{label:'보통',cls:'cb-normal',color:'var(--yellow)'};
+  if(p<85)return{label:'혼잡',cls:'cb-busy',color:'var(--red)'};
+  return{label:'매우혼잡',cls:'cb-jam',color:'#ff3333'};
+}
+function getPeak(h){
+  if(h<7)return'출근 피크 예정 (07~09)';
+  if(h<9)return'⚠️ 출근 피크 시간';
+  if(h<17)return'퇴근 피크 예정 (18~20)';
+  if(h<20)return'⚠️ 퇴근 피크 시간';
+  return'혼잡 완화 중';
+}
+
+function updateCongestion(rows){
+  if(!rows.length)return;
+  const ln=rows[0].subwayId?rows[0].subwayId.replace('10',''):'2';
+  const h=new Date().getHours();
+  const base=HOURLY[h],w=LINE_W[ln]||1;
+  const times=rows.map(r=>parseInt(r.barvlDt||'9999')).filter(t=>!isNaN(t)&&t>0);
+  const avgInt=times.length>=2?Math.round(times.reduce((a,b)=>a+b,0)/times.length/60*10)/10:null;
+  let bonus=0;if(avgInt!==null){if(avgInt<2)bonus=15;else if(avgInt<3)bonus=8;else if(avgInt>6)bonus=-10;}
+  const pct=Math.min(99,Math.max(1,Math.round(base*w+bonus+(Math.random()-.5)*8)));
+  const lvl=getCongLvl(pct);
+  congData[ln]={pct,lvl,avgInt,trains:rows.length,dirs:[...new Set(rows.map(r=>r.bstatnNm).filter(Boolean))].slice(0,3)};
+  document.getElementById('kv-cong').textContent=pct+'%';
+  document.getElementById('kv-cong').style.color=lvl.color;
+  document.getElementById('kv-cong-lbl').textContent=lvl.label;
+  if(currentTab==='line')renderLineCong();
+  else if(currentTab==='st')renderStCong();
+}
+
+function renderLineCong(){
+  const h=new Date().getHours();
+  const grid=document.getElementById('congGrid');
+  if(!grid)return;
+  grid.innerHTML=Object.keys(LINE_META).map(ln=>{
+    const meta=LINE_META[ln];
+    const base=HOURLY[h],w=LINE_W[ln]||1;
+    const pct=congData[ln]?.pct||Math.min(99,Math.max(1,Math.round(base*w+(Math.random()-.5)*10)));
+    const lvl=getCongLvl(pct);
+    const bc=pct<40?'var(--green)':pct<65?'var(--yellow)':pct<85?'var(--red)':'#ff3333';
+    const trains=congData[ln]?.trains||Math.round(4+Math.random()*5);
+    const intv=congData[ln]?.avgInt||(Math.round((3+Math.random()*4)*10)/10);
+    return `<div class="cong-card">
+      <div class="cc-top">
+        <div class="cc-name"><span class="cc-dot" style="background:${meta.color}"></span>${meta.name}</div>
+        <span class="cc-badge ${lvl.cls}">${lvl.label}</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${bc}88,${bc})"></div></div>
+      <div class="cc-bot">
+        <span>🚆 ${trains}편</span>
+        <span>⏱ ~${intv}분</span>
+        <span class="cc-pct" style="color:${bc}">${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTimeCong(){
+  const h=new Date().getHours();
+  const bars=document.getElementById('tcBars');if(!bars)return;
+  const hours=Array.from({length:20},(_,i)=>i+5);
+  bars.innerHTML=hours.map(hr=>{
+    const v=Math.min(99,Math.max(1,Math.round(HOURLY[hr]+(Math.random()-.5)*6)));
+    const c=v<40?'var(--green)':v<65?'var(--yellow)':v<85?'var(--red)':'#ff3333';
+    const isNow=hr===h;
+    return `<div class="tc-col${isNow?' now':''}">
+      <div class="tc-bar" style="height:${v}%;background:${c}${isNow?'':'88'}" title="${hr}시 ${v}%"></div>
+      <span class="tc-tick">${hr}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderStCong(){
+  const ln=Object.keys(congData)[0]||'2';
+  const d=congData[ln];
+  const h=new Date().getHours();
+  const pct=d?.pct||Math.min(99,Math.max(1,Math.round(HOURLY[h]*(LINE_W[ln]||1))));
+  const lvl=d?.lvl||getCongLvl(pct);
+  const circ=207.3;
+  const fill=document.getElementById('gaugeFill');
+  const gp=document.getElementById('gaugePct');
+  if(fill){fill.style.strokeDashoffset=circ-(pct/100)*circ;fill.style.stroke=lvl.color;}
+  if(gp){gp.textContent=pct+'%';gp.style.color=lvl.color;}
+  document.getElementById('giTitle').textContent=currentStation+'역 혼잡도';
+  document.getElementById('giLevel').textContent=lvl.label;document.getElementById('giLevel').style.color=lvl.color;
+  document.getElementById('giWait').textContent=d?.avgInt?`약 ${d.avgInt}분`:'—';
+  document.getElementById('giInterval').textContent=d?.avgInt?`${d.avgInt}분`:'—';
+  document.getElementById('giPeak').textContent=getPeak(h);
+}
+
+function switchTab(t){
+  currentTab=t;
+  ['line','time','st'].forEach(k=>{
+    document.getElementById('panel-'+k).style.display=k===t?'':'none';
+    document.getElementById('tab-'+k).classList.toggle('on',k===t);
+  });
+  if(t==='line')renderLineCong();
+  else if(t==='time')renderTimeCong();
+  else renderStCong();
+}
+
+function loadSample(st){
   renderArrival({realtimeArrivalList:[
-    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:stn,statnId:'2000234',bstatnNm:'성수',trainLineNm:'성수행',barvlDt:'90',arvlCd:'1',arvlMsg2:stn+'역 진입 중',arvlMsg3:'성수'},
-    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:stn,statnId:'2000234',bstatnNm:'신도림',trainLineNm:'신도림행',barvlDt:'280',arvlCd:'0',arvlMsg2:'교대-'+stn+' 사이',arvlMsg3:'신도림'},
-    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:stn,statnId:'2000234',bstatnNm:'성수',trainLineNm:'성수행(급행)',barvlDt:'540',arvlCd:'0',arvlMsg2:'역삼 출발',arvlMsg3:'성수'},
-    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:stn,statnId:'2000234',bstatnNm:'신도림',trainLineNm:'신도림행',barvlDt:'720',arvlCd:'0',arvlMsg2:'선릉-역삼 사이',arvlMsg3:'신도림'},
-    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:stn,statnId:'2000234',bstatnNm:'성수',trainLineNm:'성수행',barvlDt:'960',arvlCd:'0',arvlMsg2:'삼성 출발',arvlMsg3:'성수'},
-  ]}, stn);
+    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:st,statnId:'2000234',bstatnNm:'성수',trainLineNm:'성수행',barvlDt:'90',arvlCd:'1',arvlMsg2:st+'역 진입 중',arvlMsg3:'성수'},
+    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:st,statnId:'2000234',bstatnNm:'신도림',trainLineNm:'신도림행',barvlDt:'280',arvlCd:'0',arvlMsg2:'교대-'+st+' 사이',arvlMsg3:'신도림'},
+    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:st,statnId:'2000234',bstatnNm:'성수',trainLineNm:'성수행(급행)',barvlDt:'540',arvlCd:'0',arvlMsg2:'역삼 출발',arvlMsg3:'성수'},
+    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:st,statnId:'2000234',bstatnNm:'신도림',trainLineNm:'신도림행',barvlDt:'720',arvlCd:'0',arvlMsg2:'선릉-역삼 사이',arvlMsg3:'신도림'},
+    {subwayId:'1002',subwayNm:'수도권 2호선',statnNm:st,statnId:'2000234',bstatnNm:'성수',trainLineNm:'성수행',barvlDt:'960',arvlCd:'0',arvlMsg2:'삼성 출발',arvlMsg3:'성수'},
+  ]},st);
 }
 
-/* ================================================================
-   혼잡도 분석 엔진
-================================================================ */
-
-// 시간대별 기본 혼잡도 패턴 (0~23시, 0~100%)
-const HOURLY_BASE = [
-  5, 3, 2, 2, 4, 12,   // 0~5시
-  35, 72, 88, 68, 52, 55, // 6~11시 (출근 피크: 7~8시)
-  58, 50, 45, 48, 55, 62, // 12~17시
-  85, 92, 78, 60, 40, 20  // 18~23시 (퇴근 피크: 18~19시)
-];
-
-// 호선별 혼잡도 가중치 (노선 특성 반영)
-const LINE_WEIGHT = {
-  '1': 0.85, '2': 1.15, '3': 0.95, '4': 0.90,
-  '5': 1.05, '6': 0.80, '7': 1.10, '8': 0.75, '9': 1.20
-};
-
-// 현재 도착 데이터 기반 혼잡도 계산 상태
-let congestionData = {};  // { lineNum: { pct, trains, avgInterval } }
-let currentTab = 'line';
-let congRefreshTimer = null;
-
-// 실시간 도착 데이터 → 혼잡도 계산
-function calcCongestionFromArrival(rows) {
-  if (!rows || !rows.length) return null;
-  const now = new Date();
-  const h = now.getHours();
-  const base = HOURLY_BASE[h];
-  const ln = rows[0].subwayId ? rows[0].subwayId.replace('10','') : '2';
-  const w = LINE_WEIGHT[ln] || 1.0;
-
-  // 열차 간격 분석 (초 단위 barvlDt 기반)
-  const times = rows.map(r => parseInt(r.barvlDt||'9999')).filter(t => !isNaN(t) && t > 0 && t < 9999);
-  const avgInterval = times.length >= 2 
-    ? Math.round(times.reduce((a,b) => a+b, 0) / times.length / 60 * 10) / 10
-    : null;
-
-  // 간격이 짧을수록 혼잡도 가산
-  let intervalBonus = 0;
-  if (avgInterval !== null) {
-    if (avgInterval < 2) intervalBonus = 15;
-    else if (avgInterval < 3) intervalBonus = 8;
-    else if (avgInterval > 6) intervalBonus = -10;
-  }
-
-  // 최종 혼잡도 (기본 + 가중치 + 간격 보정 + 랜덤 노이즈)
-  const noise = (Math.random() - 0.5) * 8;
-  const pct = Math.min(99, Math.max(1, Math.round(base * w + intervalBonus + noise)));
-
-  // 방향 수 분석
-  const directions = [...new Set(rows.map(r => r.bstatnNm).filter(Boolean))];
-
-  return {
-    pct,
-    level: getCongLevel(pct),
-    avgInterval,
-    trains: rows.length,
-    directions: directions.slice(0, 3),
-    nextPeak: getNextPeakInfo(h)
-  };
-}
-
-function getCongLevel(pct) {
-  if (pct < 40) return { label:'여유', cls:'smooth', color:'#34d399' };
-  if (pct < 65) return { label:'보통', cls:'normal', color:'#fbbf24' };
-  if (pct < 85) return { label:'혼잡', cls:'busy', color:'#f87171' };
-  return { label:'매우혼잡', cls:'congested', color:'#ff4444' };
-}
-
-function getNextPeakInfo(h) {
-  if (h < 7)  return '출근 피크 07~09시 예정';
-  if (h < 9)  return '⚠️ 현재 출근 피크 시간';
-  if (h < 17) return '퇴근 피크 18~20시 예정';
-  if (h < 20) return '⚠️ 현재 퇴근 피크 시간';
-  return '혼잡 완화 중';
-}
-
-// ── 탭 전환 ──
-function switchTab(tab) {
-  currentTab = tab;
-  ['line','time','station'].forEach(t => {
-    document.getElementById('panel-'+t).style.display = t === tab ? '' : 'none';
-    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
-  });
-  if (tab === 'time') renderTimeChart();
-  if (tab === 'station') renderStationCong();
-  if (tab === 'line') renderLineCong();
-}
-
-// ── 호선별 혼잡도 렌더링 ──
-function renderLineCong() {
-  const now = new Date();
-  const h = now.getHours();
-  const grid = document.getElementById('lineCongGrid');
-  if (!grid) return;
-
-  let html = '';
-  Object.keys(LINE_META).forEach(ln => {
-    const meta = LINE_META[ln];
-    const base = HOURLY_BASE[h];
-    const w = LINE_WEIGHT[ln] || 1.0;
-    const noise = (Math.random() - 0.5) * 10;
-
-    // 현재 조회 역의 실제 데이터 반영
-    let pct;
-    if (congestionData[ln]) {
-      pct = congestionData[ln].pct;
-    } else {
-      pct = Math.min(99, Math.max(1, Math.round(base * w + noise)));
-    }
-
-    const lvl = getCongLevel(pct);
-    const barColor = pct < 40 ? '#34d399' : pct < 65 ? '#fbbf24' : pct < 85 ? '#f87171' : '#ff4444';
-    const trains = congestionData[ln]?.trains || Math.round(4 + Math.random() * 6);
-    const interval = congestionData[ln]?.avgInterval || (Math.round((3 + Math.random() * 4) * 10) / 10);
-
-    html += `
-      <div class="line-cong-card">
-        <div class="lcc-header">
-          <div class="lcc-name">
-            <span class="lcc-dot" style="background:${meta.color}"></span>
-            <span>${meta.name}</span>
-          </div>
-          <span class="lcc-badge ${lvl.cls}">${lvl.label}</span>
-        </div>
-        <div class="cong-bar-bg">
-          <div class="cong-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${barColor}99,${barColor})"></div>
-        </div>
-        <div class="lcc-stats">
-          <span>열차 ${trains}편</span>
-          <span>간격 ~${interval}분</span>
-          <span class="lcc-pct" style="color:${barColor}">${pct}%</span>
-        </div>
-      </div>`;
-  });
-  grid.innerHTML = html;
-}
-
-// ── 시간대 차트 렌더링 ──
-function renderTimeChart() {
-  const chart = document.getElementById('timeChart');
-  if (!chart) return;
-  const now = new Date();
-  const h = now.getHours();
-  // 05~24시 범위만 표시
-  const hours = Array.from({length:20}, (_,i) => i+5);
-  let html = '';
-  hours.forEach(hr => {
-    const base = HOURLY_BASE[hr] || 0;
-    const noise = (Math.random()-0.5)*6;
-    const val = Math.min(99, Math.max(1, Math.round(base + noise)));
-    const color = val < 40 ? '#34d399' : val < 65 ? '#fbbf24' : val < 85 ? '#f87171' : '#ff4444';
-    const isNow = hr === h;
-    html += `
-      <div class="time-bar-col${isNow?' now':''}">
-        <div class="time-bar" style="height:${val}%;background:${color}${isNow?'':'88'};" title="${hr}시 혼잡도 ${val}%"></div>
-        <span class="time-bar-tick">${hr}</span>
-      </div>`;
-  });
-  chart.innerHTML = html;
-}
-
-// ── 현재 역 혼잡도 렌더링 ──
-function renderStationCong() {
-  const ln = Object.keys(LINE_META).find(k => congestionData[k]) || '2';
-  const data = congestionData[ln];
-  const now = new Date();
-  const h = now.getHours();
-
-  let pct, lvl, avgInterval, trains, directions, nextPeak;
-  if (data) {
-    pct = data.pct; lvl = data.level;
-    avgInterval = data.avgInterval; trains = data.trains;
-    directions = data.directions; nextPeak = data.nextPeak;
-  } else {
-    pct = Math.min(99, Math.max(1, Math.round(HOURLY_BASE[h] * (LINE_WEIGHT[ln]||1))));
-    lvl = getCongLevel(pct);
-    avgInterval = (Math.round((3+Math.random()*3)*10)/10);
-    trains = Math.round(4+Math.random()*5);
-    directions = ['행선지 정보 없음'];
-    nextPeak = getNextPeakInfo(h);
-  }
-
-  // 게이지 업데이트
-  const circumference = 175.9;
-  const offset = circumference - (pct / 100) * circumference;
-  const fill = document.getElementById('gaugeFill');
-  const gaugePct = document.getElementById('gaugePct');
-  if (fill) {
-    fill.style.strokeDashoffset = offset;
-    fill.style.stroke = lvl.color;
-  }
-  if (gaugePct) {
-    gaugePct.textContent = pct + '%';
-    gaugePct.style.color = lvl.color;
-  }
-
-  const stName = currentStation || '강남';
-  document.getElementById('sciTitle').textContent = `${stName}역 실시간 분석`;
-  document.getElementById('sciLevel').textContent = lvl.label;
-  document.getElementById('sciLevel').style.color = lvl.color;
-  document.getElementById('sciWait').textContent = avgInterval ? `약 ${avgInterval}분` : '—';
-  document.getElementById('sciInterval').textContent = avgInterval ? `${avgInterval}분` : '—';
-  document.getElementById('sciDirections').textContent = directions?.length ? `${directions.length}방향` : '—';
-  document.getElementById('sciPrediction').textContent = nextPeak || '—';
-}
-
-// ── 도착 데이터 수신 시 혼잡도 업데이트 ──
-function updateCongestion(rows) {
-  if (!rows || !rows.length) return;
-  const ln = rows[0].subwayId ? rows[0].subwayId.replace('10','') : '2';
-  const result = calcCongestionFromArrival(rows);
-  if (result) congestionData[ln] = result;
-
-  // 현재 탭에 맞게 갱신
-  if (currentTab === 'line') renderLineCong();
-  else if (currentTab === 'station') renderStationCong();
-}
-
-// ── 혼잡도 자동 갱신 (60초마다 호선별 재계산) ──
-function startCongestionRefresh() {
-  renderLineCong();
-  clearInterval(congRefreshTimer);
-  congRefreshTimer = setInterval(() => {
-    if (currentTab === 'line') renderLineCong();
-    else if (currentTab === 'time') renderTimeChart();
-    else if (currentTab === 'station') renderStationCong();
-  }, 60000);
-}
-
-
-function startAutoRefresh() {
+function startAutoRefresh(){
   clearInterval(autoTimer);
-  autoTimer = setInterval(()=>{ if(currentStation) fetchArrival(currentStation); }, 30000);
+  autoTimer=setInterval(()=>{if(currentStation)fetchArrival(currentStation);},30000);
+}
+function startCongRefresh(){
+  renderLineCong();
+  clearInterval(congTimer);
+  congTimer=setInterval(()=>{
+    if(currentTab==='line')renderLineCong();
+    else if(currentTab==='time')renderTimeCong();
+    else renderStCong();
+  },60000);
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('load',()=>{
   initMap();
   fetchArrival('강남');
-  zoomToStation('강남');
+  zoomTo('강남');
   startAutoRefresh();
-  startCongestionRefresh();
+  startCongRefresh();
+  setTimeout(()=>toast('🚇 서울 지하철 AI 대시보드가 시작되었습니다','success',3000),800);
 });
 </script>
 </body>
