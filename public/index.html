@@ -488,6 +488,34 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
 }
 .ai-hist-item:hover{background:rgba(255,255,255,.05);color:var(--text)}
 .ai-hist-item .hi-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+/* ── 혼잡 순위 ── */
+.rank-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px}
+.rank-col{}
+.rank-col-title{
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:8px;display:flex;align-items:center;gap:6px;
+}
+.rank-item{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  margin-bottom:5px;cursor:pointer;transition:all .2s;
+}
+.rank-item:hover{border-color:var(--border2);transform:translateX(3px)}
+.rank-no{
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:800;
+  width:18px;text-align:center;flex-shrink:0;
+}
+.rank-info{flex:1;min-width:0}
+.rank-stnm{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-line{font-size:10px;color:var(--text3);margin-top:1px}
+.rank-bar-bg{height:3px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden;margin-top:4px}
+.rank-bar-fill{height:100%;border-radius:10px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.rank-pct{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;
+  flex-shrink:0;width:36px;text-align:right;
+}
+.rank-update{font-size:10px;color:var(--text3);padding:0 14px 10px;text-align:right}
+
 /* ── 승하차 인원 ── */
 .pax-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
 .pax-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;text-align:center}
@@ -1039,6 +1067,7 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
         <button class="tab on" id="tab-line" onclick="switchTab('line')">호선별</button>
         <button class="tab" id="tab-time" onclick="switchTab('time')">시간대</button>
         <button class="tab" id="tab-st" onclick="switchTab('st')">현재역</button>
+        <button class="tab" id="tab-rank" onclick="switchTab('rank')">혼잡 순위</button>
       </div>
     </div>
     <div id="panel-line"><div class="cong-grid" id="congGrid"></div></div>
@@ -1070,6 +1099,15 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
           <div class="gi-row"><span class="gi-key">평균 대기</span><span class="gi-val" id="giWait">—</span></div>
           <div class="gi-row"><span class="gi-key">열차 간격</span><span class="gi-val" id="giInterval">—</span></div>
           <div class="gi-row"><span class="gi-key">다음 피크</span><span class="gi-val" id="giPeak">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 혼잡 순위 탭 -->
+    <div id="panel-rank" style="display:none">
+      <div class="rank-wrap" id="rankWrap">
+        <div style="display:flex;align-items:center;justify-content:center;padding:20px;color:var(--text3);font-size:12px">
+          로딩 중...
         </div>
       </div>
     </div>
@@ -1664,14 +1702,129 @@ function renderStCong(){
 
 function switchTab(t){
   currentTab=t;
-  ['line','time','st'].forEach(k=>{
+  ['line','time','st','rank'].forEach(k=>{
     document.getElementById('panel-'+k).style.display=k===t?'':'none';
     document.getElementById('tab-'+k).classList.toggle('on',k===t);
   });
   if(t==='line')renderLineCong();
   else if(t==='time')renderTimeCong();
-  else renderStCong();
+  else if(t==='st')renderStCong();
+  else if(t==='rank')renderRankCong();
 }
+
+/* ── 혼잡 순위 렌더링 ── */
+function renderRankCong(){
+  const wrap = document.getElementById('rankWrap');
+  if (!wrap) return;
+
+  const h = new Date().getHours();
+
+  // 주요 역 목록과 혼잡도 계산
+  const KEY_STATIONS = [
+    {n:'강남',     ln:'2', lc:'#2f9e44'},
+    {n:'홍대입구', ln:'2', lc:'#2f9e44'},
+    {n:'서울역',   ln:'1', lc:'#3b5bdb'},
+    {n:'신촌',     ln:'2', lc:'#2f9e44'},
+    {n:'잠실',     ln:'2', lc:'#2f9e44'},
+    {n:'사당',     ln:'2', lc:'#2f9e44'},
+    {n:'신림',     ln:'2', lc:'#2f9e44'},
+    {n:'구로디지털단지', ln:'2', lc:'#2f9e44'},
+    {n:'종로3가',  ln:'3', lc:'#e8590c'},
+    {n:'교대',     ln:'3', lc:'#e8590c'},
+    {n:'이태원',   ln:'6', lc:'#c55c1d'},
+    {n:'노원',     ln:'4', lc:'#4dabf7'},
+    {n:'건대입구', ln:'2', lc:'#2f9e44'},
+    {n:'신도림',   ln:'2', lc:'#2f9e44'},
+    {n:'왕십리',   ln:'2', lc:'#2f9e44'},
+    {n:'합정',     ln:'2', lc:'#2f9e44'},
+    {n:'고속터미널', ln:'3', lc:'#e8590c'},
+    {n:'여의도',   ln:'5', lc:'#9c36b5'},
+    {n:'강변',     ln:'2', lc:'#2f9e44'},
+    {n:'천호',     ln:'5', lc:'#9c36b5'},
+  ];
+
+  // 시간대별 역별 혼잡도 가중치 (출퇴근 반영)
+  const STATION_W = {
+    '강남':1.3,'홍대입구':1.2,'서울역':1.1,'신촌':1.0,'잠실':1.15,
+    '사당':1.1,'신림':1.0,'구로디지털단지':1.05,'종로3가':0.95,'교대':1.0,
+    '이태원':0.85,'노원':0.95,'건대입구':1.0,'신도림':1.2,'왕십리':1.05,
+    '합정':1.1,'고속터미널':1.0,'여의도':1.05,'강변':0.9,'천호':0.9,
+  };
+
+  const baseH = HOURLY[h];
+  const stations = KEY_STATIONS.map(s => {
+    const w = STATION_W[s.n] || 1.0;
+    const noise = (Math.random() - 0.5) * 12;
+    const pct = Math.min(99, Math.max(1, Math.round(baseH * w + noise)));
+    return { ...s, pct };
+  });
+
+  // 실시간 도착 데이터 기반으로 현재 조회 역 반영
+  if (currentStation && lastRows.length) {
+    const found = stations.find(s => s.n === currentStation || currentStation.includes(s.n));
+    if (found) {
+      const times = lastRows.map(r=>parseInt(r.barvlDt||'9999')).filter(t=>!isNaN(t)&&t>0);
+      const avgSec = times.length ? times.reduce((a,b)=>a+b,0)/times.length : null;
+      let bonus = 0;
+      if (avgSec !== null) {
+        if (avgSec < 120) bonus = 18;
+        else if (avgSec < 180) bonus = 10;
+        else if (avgSec > 400) bonus = -10;
+      }
+      found.pct = Math.min(99, Math.max(1, Math.round(baseH * (STATION_W[found.n]||1) + bonus)));
+      found.isLive = true;
+    }
+  }
+
+  // 정렬
+  const sorted = [...stations].sort((a, b) => b.pct - a.pct);
+  const top5   = sorted.slice(0, 5);
+  const bot5   = [...sorted].reverse().slice(0, 5);
+  const maxPct = top5[0]?.pct || 100;
+
+  const makeItem = (item, idx, isTop) => {
+    const lvl = getCongLvl(item.pct);
+    const barColor = isTop
+      ? (item.pct >= 85 ? '#ff4444' : item.pct >= 65 ? '#f87171' : '#fbbf24')
+      : (item.pct < 40  ? '#34d399' : '#a3e635');
+    const barW = Math.round(item.pct / maxPct * 100);
+    const liveTag = item.isLive
+      ? `<span style="font-size:8px;background:rgba(52,211,153,.15);color:var(--green);border:1px solid rgba(52,211,153,.25);border-radius:20px;padding:1px 5px;margin-left:4px">LIVE</span>` : '';
+    return `
+      <div class="rank-item" onclick="quickSearch('${item.n}')">
+        <span class="rank-no" style="color:${barColor}">${idx + 1}</span>
+        <div class="rank-info">
+          <div class="rank-stnm">${item.n}역 ${liveTag}</div>
+          <div class="rank-line" style="color:${item.lc}">${item.ln}호선</div>
+          <div class="rank-bar-bg">
+            <div class="rank-bar-fill" style="width:${barW}%;background:${barColor}"></div>
+          </div>
+        </div>
+        <span class="rank-pct" style="color:${barColor}">${item.pct}%</span>
+      </div>`;
+  };
+
+  const now = new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+
+  wrap.innerHTML = `
+    <div class="rank-wrap">
+      <div class="rank-col">
+        <div class="rank-col-title" style="color:var(--red)">
+          🔥 혼잡도 상위 5개역
+        </div>
+        ${top5.map((s,i) => makeItem(s, i, true)).join('')}
+      </div>
+      <div class="rank-col">
+        <div class="rank-col-title" style="color:var(--green)">
+          🟢 혼잡도 하위 5개역
+        </div>
+        ${bot5.map((s,i) => makeItem(s, i, false)).join('')}
+      </div>
+    </div>
+    <div class="rank-update">⏱ ${now} 기준 · 역 클릭 시 실시간 도착 조회</div>`;
+}
+
+
 
 function loadSample(st){
   renderArrival({realtimeArrivalList:[
@@ -2014,7 +2167,8 @@ function startCongRefresh(){
   congTimer=setInterval(()=>{
     if(currentTab==='line')renderLineCong();
     else if(currentTab==='time')renderTimeCong();
-    else renderStCong();
+    else if(currentTab==='st')renderStCong();
+    else if(currentTab==='rank')renderRankCong();
   },60000);
 }
 
