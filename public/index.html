@@ -2391,7 +2391,11 @@ async function renderMonthlyRank() {
       const data = await res.json();
       const rows = data.CardSubwayStatsNew?.row;
       if (!rows?.length) return;
-      const total = rows.reduce((s,r)=>s+parseInt(r.RIDE_PASGR_NUM||'0')+parseInt(r.ALIGHT_PASGR_NUM||'0'),0);
+      const total = rows.reduce((s,r)=>{
+        const ride   = parseInt(r.RIDE_PASGR_NUM  || r.RIDE_PSGR_NUM  || r.ridePasgrNum  || '0');
+        const alight = parseInt(r.ALIGHT_PASGR_NUM|| r.ALIGHT_PSGR_NUM|| r.alightPasgrNum|| '0');
+        return s + ride + alight;
+      }, 0);
       const dow = ['일','월','화','수','목','금','토'][new Date(dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8)).getDay()];
       dayData.push({dt, total, dow});
     } catch(e){}
@@ -2488,50 +2492,81 @@ async function fetchPassengers(stName) {
     dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
   }
 
+  // 필드명 방어적 파싱 헬퍼 (CardSubwayStatsNew API는 서비스에 따라 필드명이 다를 수 있음)
+  function getRide(r)   { return parseInt(r.RIDE_PASGR_NUM  || r.RIDE_PSGR_NUM  || r.ridePasgrNum  || r.ride  || '0'); }
+  function getAlight(r) { return parseInt(r.ALIGHT_PASGR_NUM|| r.ALIGHT_PSGR_NUM|| r.alightPasgrNum|| r.alight|| '0'); }
+  function getStName(r) { return r.SUB_STA_NM || r.STATION_NM || r.STN_NM || r.stNm || r.subStaNm || ''; }
+  function getLine(r)   { return (r.LINE_NUM || r.SBWY_ROUT_LN_NM || r.lineNum || '').replace('호선','').trim() || '?'; }
+
   let foundDt = null, totalRide = 0, totalAlight = 0, lineBreakdown = {};
+  let rawSample = null; // 첫 row 디버그용
 
   // 1) 하루 합산 (CardSubwayStatsNew)
   for (const dt of dates) {
     try {
-      const res = await fetch(`${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/100/${dt}`);
+      const res = await fetch(`${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/200/${dt}`);
       if (!res.ok) continue;
       const data = await res.json();
-      const rows = data.CardSubwayStatsNew?.row;
+      // 응답 최상위 키에서 row 배열 탐색 (서비스명이 바뀔 수 있음)
+      let rows = null;
+      for (const k of Object.keys(data)) {
+        if (data[k]?.row?.length) { rows = data[k].row; break; }
+      }
       if (!rows?.length) continue;
-      const matched = rows.filter(r => r.SUB_STA_NM && (r.SUB_STA_NM === stName || r.SUB_STA_NM.includes(stName)));
+
+      rawSample = rows[0]; // 디버그용
+
+      // 역명 매칭 (정확 일치 우선 → 부분 일치)
+      let matched = rows.filter(r => getStName(r) === stName);
+      if (!matched.length) matched = rows.filter(r => getStName(r).includes(stName) || stName.includes(getStName(r)));
       if (!matched.length) continue;
+
       matched.forEach(r => {
-        const ride   = parseInt(r.RIDE_PASGR_NUM   || '0');
-        const alight = parseInt(r.ALIGHT_PASGR_NUM || '0');
+        const ride   = getRide(r);
+        const alight = getAlight(r);
         totalRide   += ride; totalAlight += alight;
-        const ln = r.LINE_NUM?.replace('호선','').trim() || '?';
+        const ln = getLine(r);
         if (!lineBreakdown[ln]) lineBreakdown[ln] = {ride:0,alight:0};
         lineBreakdown[ln].ride += ride; lineBreakdown[ln].alight += alight;
       });
+
+      if (totalRide + totalAlight === 0 && rawSample) {
+        // 0이면 필드명 디버그 — 실제 필드명으로 재시도
+        console.warn('[승하차] 0값 감지. 첫 row:', JSON.stringify(rawSample));
+      }
+
       foundDt = dt;
       break;
     } catch(e) { continue; }
   }
 
-  if (foundDt) {
+  if (foundDt && (totalRide + totalAlight > 0)) {
     renderPassengers(totalRide, totalAlight, lineBreakdown, foundDt);
+  } else if (foundDt) {
+    // 데이터는 찾았지만 0 → 필드명 불일치 가능성
+    box.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">
+      데이터 파싱 중 오류 (${foundDt})<br>
+      <span style="font-size:10px">필드: ${rawSample ? Object.keys(rawSample).join(', ') : '—'}</span>
+    </div>`;
   } else {
-    box.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">승하차 데이터 없음</div>';
+    box.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">승하차 데이터 없음<br><span style="font-size:10px">최근 7일 데이터 없음 (공휴일·데이터 지연 가능)</span></div>';
   }
 
   // 2) 시간대별 (CardSubwayStatsNewTime) — 별도 호출
   if (foundDt && hbox) {
     try {
-      const url2 = `${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNewTime/1/300/${foundDt}`;
+      const url2 = `${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNewTime/1/500/${foundDt}`;
       const res2 = await fetch(url2);
       if (res2.ok) {
         const data2 = await res2.json();
-        const rows2 = data2.CardSubwayStatsNewTime?.row;
+        let rows2 = null;
+        for (const k of Object.keys(data2)) {
+          if (data2[k]?.row?.length) { rows2 = data2[k].row; break; }
+        }
         if (rows2?.length) {
-          const matched2 = rows2.filter(r => r.SUB_STA_NM && (r.SUB_STA_NM === stName || r.SUB_STA_NM.includes(stName)));
-          if (matched2.length) {
-            renderHourly(matched2, foundDt);
-          }
+          let matched2 = rows2.filter(r => getStName(r) === stName);
+          if (!matched2.length) matched2 = rows2.filter(r => getStName(r).includes(stName) || stName.includes(getStName(r)));
+          if (matched2.length) renderHourly(matched2, foundDt);
         }
       }
     } catch(e) {}
@@ -2608,26 +2643,31 @@ function renderHourly(rows, dt) {
   const dateStr = `${dt.slice(0,4)}.${dt.slice(4,6)}.${dt.slice(6,8)}`;
   const nowH = new Date().getHours();
 
-  // 시간대 집계 (4시~24시, 2시간 단위로 그룹)
+  // 필드명 방어적 파싱 헬퍼
+  function getRide(r)   { return parseInt(r.RIDE_PASGR_NUM  || r.RIDE_PSGR_NUM  || r.ridePasgrNum  || '0'); }
+  function getAlight(r) { return parseInt(r.ALIGHT_PASGR_NUM|| r.ALIGHT_PSGR_NUM|| r.alightPasgrNum|| '0'); }
+  function getHour(r) {
+    // 시간 필드 후보: RIDE_HHMM, USE_HH, HH, SBWY_ROUT_LN_NM, TIME
+    const raw = r.RIDE_HHMM || r.USE_HH || r.HH || r.TIME || r.time || '';
+    const hStr = String(raw).padStart(4,'0').slice(0,2);
+    return parseInt(hStr);
+  }
+
   const hourMap = {};
   rows.forEach(r => {
-    const raw = r.RIDE_HHMM || r.SBWY_ROUT_LN_NM || '';
-    // 시간 파싱: "0530" 또는 "05" 형태
-    const hStr = raw.length >= 2 ? raw.slice(0,2) : '';
-    const h = parseInt(hStr);
-    if (isNaN(h)) return;
+    const h = getHour(r);
+    if (isNaN(h) || h < 0 || h > 23) return;
     if (!hourMap[h]) hourMap[h] = {ride:0, alight:0};
-    hourMap[h].ride   += parseInt(r.RIDE_PASGR_NUM   || '0');
-    hourMap[h].alight += parseInt(r.ALIGHT_PASGR_NUM || '0');
+    hourMap[h].ride   += getRide(r);
+    hourMap[h].alight += getAlight(r);
   });
 
-  // 05~23시 배열 생성
   const hours = Array.from({length:19}, (_,i) => i+5);
   const rideVals   = hours.map(h => hourMap[h]?.ride   || 0);
   const alightVals = hours.map(h => hourMap[h]?.alight || 0);
   const maxVal     = Math.max(...rideVals, ...alightVals, 1);
 
-  if (maxVal <= 1) return; // 데이터 없으면 표시 안 함
+  if (maxVal <= 1) return;
 
   const cols = hours.map((h, i) => {
     const rH  = Math.round(rideVals[i]   / maxVal * 100);
@@ -2642,7 +2682,6 @@ function renderHourly(rows, dt) {
     </div>`;
   }).join('');
 
-  // 피크 시간 찾기
   const peakRideH   = hours[rideVals.indexOf(Math.max(...rideVals))];
   const peakAlightH = hours[alightVals.indexOf(Math.max(...alightVals))];
 
