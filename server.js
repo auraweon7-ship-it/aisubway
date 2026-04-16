@@ -76,7 +76,7 @@ app.get('/api/general/*path', (req, res) => {
 
 /* ── 진단 엔드포인트: 서버 IP 및 API 직접 호출 결과 확인 ── */
 app.get('/debug', (req, res) => {
-  const testPath = '/api/subway/swBybaur90ZxASZ/json/realtimeStationArrival/0/3/%EA%B0%95%EB%82%A8';
+  const testPath = '/api/subway/hZMKHaur79byZBK/json/realtimeStationArrival/0/3/%EA%B0%95%EB%82%A8';
   const options  = {
     hostname: 'swopenapi.seoul.go.kr',
     port: 80,
