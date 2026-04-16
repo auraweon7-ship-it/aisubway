@@ -74,7 +74,82 @@ app.get('/api/general/*path', (req, res) => {
   proxyRequest('openapi.seoul.go.kr', 8088, targetPath, res);
 });
 
-/* ── 진단 엔드포인트: 서버 IP 및 API 직접 호출 결과 확인 ── */
+/* ── Anthropic Claude API 프록시 (CORS 우회) ── */
+app.post('/api/claude', express.json({ limit: '4mb' }), async (req, res) => {
+  const https = require('https');
+
+  const payload = JSON.stringify({
+    model:      req.body.model      || 'claude-sonnet-4-20250514',
+    max_tokens: req.body.max_tokens || 1000,
+    stream:     req.body.stream     || false,
+    messages:   req.body.messages
+  });
+
+  const options = {
+    hostname: 'api.anthropic.com',
+    port: 443,
+    path: '/v1/messages',
+    method: 'POST',
+    headers: {
+      'Content-Type':      'application/json',
+      'Content-Length':    Buffer.byteLength(payload),
+      'anthropic-version': '2023-06-01',
+      'x-api-key':         process.env.ANTHROPIC_API_KEY || ''
+    }
+  };
+
+  console.log('[CLAUDE] 분석 요청 수신');
+
+  // ── 스트리밍 모드 ──
+  if (req.body.stream) {
+    res.setHeader('Content-Type',        'text/event-stream');
+    res.setHeader('Cache-Control',       'no-cache');
+    res.setHeader('Connection',          'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const apiReq = https.request(options, (apiRes) => {
+      apiRes.on('data', chunk => res.write(chunk));
+      apiRes.on('end',  ()    => res.end());
+    });
+    apiReq.on('error', err => {
+      console.error('[CLAUDE ERROR]', err.message);
+      res.write(`data: {"error":"${err.message}"}\n\n`);
+      res.end();
+    });
+    apiReq.write(payload);
+    apiReq.end();
+
+  // ── 일반 모드 ──
+  } else {
+    const apiReq = https.request(options, (apiRes) => {
+      let body = '';
+      apiRes.setEncoding('utf8');
+      apiRes.on('data', c => body += c);
+      apiRes.on('end', () => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = apiRes.statusCode;
+        res.end(body);
+      });
+    });
+    apiReq.on('error', err => {
+      if (!res.headersSent)
+        res.status(502).json({ error: err.message });
+    });
+    apiReq.write(payload);
+    apiReq.end();
+  }
+});
+
+/* ── CORS preflight ── */
+app.options('/api/claude', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin',  '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(204);
+});
+
+
 app.get('/debug', (req, res) => {
   const testPath = '/api/subway/685a4d4b48617572373962795a424b/json/realtimeStationArrival/0/3/%EA%B0%95%EB%82%A8';
   const options  = {
