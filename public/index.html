@@ -993,6 +993,166 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
         <line x1="1" y1="102" x2="0" y2="99" stroke="#fffde0" stroke-width="1" opacity=".25"/>
         <line x1="1" y1="104" x2="0" y2="104" stroke="#fffde0" stroke-width="1" opacity=".2"/>
         <rect x="0" y="140" width="680" height="20" fill="#02060f"/>
+
+        <!-- ── 애니메이션 열차 레이어 ── -->
+        <!-- 열차 1: 빠른 급행 (2호선 초록) — 왼→오 -->
+        <g id="train-express" style="animation:trainLR1 7s linear infinite">
+          <!-- 객차 4칸 연결 -->
+          <rect x="0"   y="88" width="38" height="24" rx="3" fill="#197a35"/>
+          <rect x="0"   y="88" width="38" height="6"  rx="3" fill="#14612a"/>
+          <rect x="0"   y="92" width="38" height="2"  fill="#14612a"/>
+          <rect x="0"   y="108" width="38" height="4" fill="#0f4c21"/>
+          <rect x="3"   y="96" width="8"  height="9"  rx="1" fill="#bbf7d0" opacity=".95"/>
+          <rect x="14"  y="96" width="8"  height="9"  rx="1" fill="#bbf7d0" opacity=".95"/>
+          <rect x="25"  y="96" width="8"  height="9"  rx="1" fill="#86efac" opacity=".6"/>
+          <rect x="14"  y="108" width="5" height="4"  rx=".5" fill="#0f4c21"/>
+          <!-- 전조등 -->
+          <ellipse cx="38" cy="97" rx="2.5" ry="2" fill="#fffde0" opacity=".95"/>
+          <ellipse cx="38" cy="103" rx="2" ry="1.5" fill="#fffde0" opacity=".7"/>
+          <!-- 빛 번짐 -->
+          <line x1="38" y1="94" x2="48" y2="90" stroke="#fffde0" stroke-width="1.2" opacity=".25"/>
+          <line x1="38" y1="97" x2="52" y2="97" stroke="#fffde0" stroke-width="1.2" opacity=".3"/>
+          <line x1="38" y1="103" x2="50" y2="107" stroke="#fffde0" stroke-width="1" opacity=".2"/>
+          <!-- 연결기 -->
+          <rect x="38"  y="99" width="3" height="6" rx="1" fill="#0f1e32"/>
+          <!-- 객차 2 -->
+          <rect x="41"  y="88" width="38" height="24" rx="3" fill="#197a35"/>
+          <rect x="41"  y="88" width="38" height="6"  rx="3" fill="#14612a"/>
+          <rect x="41"  y="92" width="38" height="2"  fill="#14612a"/>
+          <rect x="41"  y="108" width="38" height="4" fill="#0f4c21"/>
+          <rect x="44"  y="96" width="8"  height="9"  rx="1" fill="#bbf7d0" opacity=".9"/>
+          <rect x="55"  y="96" width="8"  height="9"  rx="1" fill="#86efac" opacity=".5"/>
+          <rect x="66"  y="96" width="8"  height="9"  rx="1" fill="#bbf7d0" opacity=".9"/>
+          <rect x="55"  y="108" width="5" height="4"  rx=".5" fill="#0f4c21"/>
+          <rect x="79"  y="99" width="3"  height="6"  rx="1" fill="#0f1e32"/>
+          <!-- 객차 3 -->
+          <rect x="82"  y="88" width="38" height="24" rx="3" fill="#197a35"/>
+          <rect x="82"  y="88" width="38" height="6"  rx="3" fill="#14612a"/>
+          <rect x="82"  y="92" width="38" height="2"  fill="#14612a"/>
+          <rect x="82"  y="108" width="38" height="4" fill="#0f4c21"/>
+          <rect x="85"  y="96" width="8"  height="9"  rx="1" fill="#bbf7d0" opacity=".9"/>
+          <rect x="96"  y="96" width="8"  height="9"  rx="1" fill="#86efac" opacity=".5"/>
+          <rect x="107" y="96" width="8"  height="9"  rx="1" fill="#bbf7d0" opacity=".9"/>
+          <rect x="96"  y="108" width="5" height="4"  rx=".5" fill="#0f4c21"/>
+          <rect x="120" y="99" width="3"  height="6"  rx="1" fill="#0f1e32"/>
+          <!-- 객차 4 (후미) -->
+          <rect x="123" y="88" width="38" height="24" rx="3" fill="#197a35"/>
+          <rect x="123" y="88" width="38" height="6"  rx="3" fill="#14612a"/>
+          <rect x="123" y="92" width="38" height="2"  fill="#14612a"/>
+          <rect x="123" y="108" width="38" height="4" fill="#0f4c21"/>
+          <rect x="126" y="96" width="8"  height="9"  rx="1" fill="#86efac" opacity=".5"/>
+          <rect x="137" y="96" width="8"  height="9"  rx="1" fill="#bbf7d0" opacity=".9"/>
+          <rect x="148" y="96" width="8"  height="9"  rx="1" fill="#86efac" opacity=".5"/>
+          <rect x="137" y="108" width="5" height="4"  rx=".5" fill="#0f4c21"/>
+          <!-- 바퀴 -->
+          <circle cx="8"   cy="113" r="3.5" fill="#0a1220"/><circle cx="8"   cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="28"  cy="113" r="3.5" fill="#0a1220"/><circle cx="28"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="49"  cy="113" r="3.5" fill="#0a1220"/><circle cx="49"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="69"  cy="113" r="3.5" fill="#0a1220"/><circle cx="69"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="90"  cy="113" r="3.5" fill="#0a1220"/><circle cx="90"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="110" cy="113" r="3.5" fill="#0a1220"/><circle cx="110" cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="131" cy="113" r="3.5" fill="#0a1220"/><circle cx="131" cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="151" cy="113" r="3.5" fill="#0a1220"/><circle cx="151" cy="113" r="1.8" fill="#1a2a40"/>
+        </g>
+
+        <!-- 열차 2: 느린 완행 (9호선 금색) — 왼→오, 지연 출발 -->
+        <g id="train-local" style="animation:trainLR2 12s linear infinite;animation-delay:-5s">
+          <rect x="0"   y="88" width="38" height="24" rx="3" fill="#c06000"/>
+          <rect x="0"   y="88" width="38" height="6"  rx="3" fill="#984d00"/>
+          <rect x="0"   y="92" width="38" height="2"  fill="#984d00"/>
+          <rect x="0"   y="108" width="38" height="4" fill="#783c00"/>
+          <rect x="3"   y="96" width="8"  height="9"  rx="1" fill="#fef3c7" opacity=".9"/>
+          <rect x="14"  y="96" width="8"  height="9"  rx="1" fill="#fef3c7" opacity=".9"/>
+          <rect x="25"  y="96" width="8"  height="9"  rx="1" fill="#fde68a" opacity=".6"/>
+          <rect x="14"  y="108" width="5" height="4"  rx=".5" fill="#783c00"/>
+          <ellipse cx="38" cy="97" rx="2.5" ry="2" fill="#fffde0" opacity=".9"/>
+          <ellipse cx="38" cy="103" rx="2"  ry="1.5" fill="#fffde0" opacity=".65"/>
+          <line x1="38" y1="97" x2="50" y2="97" stroke="#fffde0" stroke-width="1" opacity=".25"/>
+          <rect x="38"  y="99" width="3"  height="6"  rx="1" fill="#0f1e32"/>
+          <rect x="41"  y="88" width="38" height="24" rx="3" fill="#c06000"/>
+          <rect x="41"  y="88" width="38" height="6"  rx="3" fill="#984d00"/>
+          <rect x="41"  y="92" width="38" height="2"  fill="#984d00"/>
+          <rect x="41"  y="108" width="38" height="4" fill="#783c00"/>
+          <rect x="44"  y="96" width="8"  height="9"  rx="1" fill="#fef3c7" opacity=".9"/>
+          <rect x="55"  y="96" width="8"  height="9"  rx="1" fill="#fde68a" opacity=".5"/>
+          <rect x="66"  y="96" width="8"  height="9"  rx="1" fill="#fef3c7" opacity=".9"/>
+          <rect x="55"  y="108" width="5" height="4"  rx=".5" fill="#783c00"/>
+          <rect x="79"  y="99" width="3"  height="6"  rx="1" fill="#0f1e32"/>
+          <rect x="82"  y="88" width="38" height="24" rx="3" fill="#c06000"/>
+          <rect x="82"  y="88" width="38" height="6"  rx="3" fill="#984d00"/>
+          <rect x="82"  y="92" width="38" height="2"  fill="#984d00"/>
+          <rect x="82"  y="108" width="38" height="4" fill="#783c00"/>
+          <rect x="85"  y="96" width="8"  height="9"  rx="1" fill="#fef3c7" opacity=".9"/>
+          <rect x="96"  y="96" width="8"  height="9"  rx="1" fill="#fde68a" opacity=".5"/>
+          <rect x="107" y="96" width="8"  height="9"  rx="1" fill="#fef3c7" opacity=".9"/>
+          <rect x="96"  y="108" width="5" height="4"  rx=".5" fill="#783c00"/>
+          <circle cx="8"   cy="113" r="3.5" fill="#0a1220"/><circle cx="8"   cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="28"  cy="113" r="3.5" fill="#0a1220"/><circle cx="28"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="49"  cy="113" r="3.5" fill="#0a1220"/><circle cx="49"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="69"  cy="113" r="3.5" fill="#0a1220"/><circle cx="69"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="90"  cy="113" r="3.5" fill="#0a1220"/><circle cx="90"  cy="113" r="1.8" fill="#1a2a40"/>
+          <circle cx="110" cy="113" r="3.5" fill="#0a1220"/><circle cx="110" cy="113" r="1.8" fill="#1a2a40"/>
+        </g>
+
+        <!-- 열차 3: 반대 방향 (5호선 보라) — 오→왼 -->
+        <g id="train-reverse" style="animation:trainRL 18s linear infinite;animation-delay:-3s">
+          <rect x="0"   y="72" width="38" height="22" rx="3" fill="#7c28a0"/>
+          <rect x="0"   y="72" width="38" height="5"  rx="3" fill="#621f80"/>
+          <rect x="0"   y="75" width="38" height="2"  fill="#621f80"/>
+          <rect x="0"   y="90" width="38" height="4"  fill="#4e1865"/>
+          <rect x="3"   y="79" width="7"  height="8"  rx="1" fill="#e9d5ff" opacity=".9"/>
+          <rect x="13"  y="79" width="7"  height="8"  rx="1" fill="#ede9fe" opacity=".9"/>
+          <rect x="23"  y="79" width="7"  height="8"  rx="1" fill="#e9d5ff" opacity=".6"/>
+          <!-- 후미등 (반대방향이라 왼쪽) -->
+          <ellipse cx="0" cy="79" rx="2" ry="1.8" fill="#ff4444" opacity=".8"/>
+          <ellipse cx="0" cy="84" rx="1.5" ry="1.4" fill="#ff4444" opacity=".6"/>
+          <rect x="38"  y="82" width="3"  height="5"  rx="1" fill="#0f1e32"/>
+          <rect x="41"  y="72" width="38" height="22" rx="3" fill="#7c28a0"/>
+          <rect x="41"  y="72" width="38" height="5"  rx="3" fill="#621f80"/>
+          <rect x="41"  y="75" width="38" height="2"  fill="#621f80"/>
+          <rect x="41"  y="90" width="38" height="4"  fill="#4e1865"/>
+          <rect x="44"  y="79" width="7"  height="8"  rx="1" fill="#ede9fe" opacity=".9"/>
+          <rect x="54"  y="79" width="7"  height="8"  rx="1" fill="#e9d5ff" opacity=".6"/>
+          <rect x="64"  y="79" width="7"  height="8"  rx="1" fill="#ede9fe" opacity=".9"/>
+          <rect x="79"  y="82" width="3"  height="5"  rx="1" fill="#0f1e32"/>
+          <rect x="82"  y="72" width="38" height="22" rx="3" fill="#7c28a0"/>
+          <rect x="82"  y="72" width="38" height="5"  rx="3" fill="#621f80"/>
+          <rect x="82"  y="75" width="38" height="2"  fill="#621f80"/>
+          <rect x="82"  y="90" width="38" height="4"  fill="#4e1865"/>
+          <rect x="85"  y="79" width="7"  height="8"  rx="1" fill="#e9d5ff" opacity=".9"/>
+          <rect x="95"  y="79" width="7"  height="8"  rx="1" fill="#ede9fe" opacity=".6"/>
+          <rect x="105" y="79" width="7"  height="8"  rx="1" fill="#e9d5ff" opacity=".9"/>
+          <!-- 선두 전조등 (오른쪽 = 왼→오 기준 오른쪽이 앞) -->
+          <ellipse cx="120" cy="79" rx="2.5" ry="2" fill="#fffde0" opacity=".9"/>
+          <ellipse cx="120" cy="84" rx="2"   ry="1.5" fill="#fffde0" opacity=".7"/>
+          <line x1="120" y1="79" x2="130" y2="75" stroke="#fffde0" stroke-width="1" opacity=".2"/>
+          <line x1="120" y1="82" x2="132" y2="82" stroke="#fffde0" stroke-width="1" opacity=".25"/>
+          <circle cx="8"   cy="95" r="3" fill="#0a1220"/><circle cx="8"   cy="95" r="1.5" fill="#1a2a40"/>
+          <circle cx="28"  cy="95" r="3" fill="#0a1220"/><circle cx="28"  cy="95" r="1.5" fill="#1a2a40"/>
+          <circle cx="49"  cy="95" r="3" fill="#0a1220"/><circle cx="49"  cy="95" r="1.5" fill="#1a2a40"/>
+          <circle cx="69"  cy="95" r="3" fill="#0a1220"/><circle cx="69"  cy="95" r="1.5" fill="#1a2a40"/>
+          <circle cx="90"  cy="95" r="3" fill="#0a1220"/><circle cx="90"  cy="95" r="1.5" fill="#1a2a40"/>
+          <circle cx="110" cy="95" r="3" fill="#0a1220"/><circle cx="110" cy="95" r="1.5" fill="#1a2a40"/>
+        </g>
+
+        <!-- CSS 애니메이션 키프레임 -->
+        <style>
+          @keyframes trainLR1 {
+            0%   { transform: translateX(-165px); }
+            100% { transform: translateX(700px);  }
+          }
+          @keyframes trainLR2 {
+            0%   { transform: translateX(-125px); }
+            100% { transform: translateX(700px);  }
+          }
+          @keyframes trainRL {
+            0%   { transform: translateX(700px) scaleX(-1); }
+            100% { transform: translateX(-130px) scaleX(-1); }
+          }
+          #train-express, #train-local, #train-reverse {
+            will-change: transform;
+          }
+        </style>
       </g>
     </svg>
   </div>
