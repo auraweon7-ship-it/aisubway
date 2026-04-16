@@ -1442,6 +1442,22 @@ function startAutoRefresh(){
   },60000);
 }
 
+function startCongRefresh(){
+  renderLineCong();
+  clearInterval(congTimer);
+  congTimer=setInterval(()=>{
+    if(currentTab==='line')renderLineCong();
+    else if(currentTab==='time')renderTimeCong();
+    else renderStCong();
+  },60000);
+}
+
+
+function startAutoRefresh(){
+  clearInterval(autoTimer);
+  autoTimer=setInterval(()=>{if(currentStation)fetchArrival(currentStation);},30000);
+}
+
 window.addEventListener('load',()=>{
   initMap();
   fetchArrival('강남');
