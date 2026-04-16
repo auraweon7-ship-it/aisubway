@@ -1422,6 +1422,25 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
           <div class="gi-row"><span class="gi-key">다음 피크</span><span class="gi-val" id="giPeak">—</span></div>
         </div>
       </div>
+      <!-- 1개월 혼잡도 라인 차트 -->
+      <div id="monthlyChartWrap" style="display:none;padding:12px 16px 4px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);display:flex;align-items:center;gap:6px">
+            <span>📈</span><span id="monthlyChartTitle">— 1개월 혼잡도 현황</span>
+          </div>
+          <div style="display:flex;gap:10px;font-size:9px;color:var(--text3)">
+            <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:2px;background:var(--accent);display:inline-block;border-radius:2px"></span>혼잡도</span>
+            <span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>평일</span>
+            <span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:50%;background:var(--yellow);display:inline-block"></span>주말</span>
+          </div>
+        </div>
+        <svg id="monthlyChart" width="100%" height="110" style="overflow:visible"></svg>
+        <div id="monthlyChartFooter" style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;padding:0 2px"></div>
+        <div id="monthlyChartStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px"></div>
+      </div>
+      <div id="monthlyChartLoading" style="display:none;padding:14px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">
+        📊 1개월 혼잡도 불러오는 중...
+      </div>
     </div>
 
     <!-- 혼잡 순위 탭 -->
@@ -2217,6 +2236,195 @@ function renderStCong(){
   document.getElementById('giWait').textContent    = avgInt ? `약 ${avgInt}분` : '—';
   document.getElementById('giInterval').textContent= avgInt ? `${avgInt}분` : '—';
   document.getElementById('giPeak').textContent    = getPeak(h);
+
+  // 1개월 혼잡도 라인 차트 — 역이 있을 때만 요청
+  if (currentStation) renderMonthlyCongChart(currentStation);
+}
+
+/* ── 1개월 혼잡도 라인 차트 ── */
+async function renderMonthlyCongChart(stName) {
+  const wrap    = document.getElementById('monthlyChartWrap');
+  const loading = document.getElementById('monthlyChartLoading');
+  const svg     = document.getElementById('monthlyChart');
+  const footer  = document.getElementById('monthlyChartFooter');
+  const stats   = document.getElementById('monthlyChartStats');
+  const title   = document.getElementById('monthlyChartTitle');
+  if (!wrap || !svg) return;
+
+  wrap.style.display    = 'none';
+  loading.style.display = 'block';
+  title.textContent     = stName + '역 1개월 혼잡도 현황';
+
+  const gBase = (location.hostname==='localhost'||location.hostname==='127.0.0.1')
+    ? 'http://localhost:3000/api/general'
+    : `${location.origin}/api/general`;
+
+  const DAILY_REF = 7_000_000;
+  const dates = [];
+  for (let i = 2; i <= 32; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
+  }
+
+  // 최근 30일 병렬 호출
+  const results = await Promise.allSettled(dates.map(async dt => {
+    try {
+      const res = await fetch(`${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/200/${dt}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      let rows = null;
+      for (const k of Object.keys(data)) {
+        if (data[k]?.row?.length) { rows = data[k].row; break; }
+      }
+      if (!rows?.length) return null;
+
+      // 해당 역 데이터 필터
+      let matched = rows.filter(r => {
+        const nm = r.SUB_STA_NM || r.STATION_NM || r.STN_NM || r.stNm || '';
+        return nm === stName || nm.includes(stName);
+      });
+      if (!matched.length) {
+        // 역 데이터 없으면 전체 합산으로 혼잡도 추정
+        const total = rows.reduce((s,r)=>{
+          return s + parseInt(r.RIDE_PASGR_NUM||r.RIDE_PSGR_NUM||'0')
+                   + parseInt(r.ALIGHT_PASGR_NUM||r.ALIGHT_PSGR_NUM||'0');
+        }, 0);
+        const congPct = Math.min(99, Math.max(1, Math.round(total / DAILY_REF * 100)));
+        const dow = ['일','월','화','수','목','금','토'][new Date(`${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}`).getDay()];
+        return { dt, congPct, dow, stMatched: false };
+      }
+      // 역 직접 매칭: 이용객 합산 → 혼잡도
+      const stTotal = matched.reduce((s,r)=>{
+        return s + parseInt(r.RIDE_PASGR_NUM||r.RIDE_PSGR_NUM||'0')
+                 + parseInt(r.ALIGHT_PASGR_NUM||r.ALIGHT_PSGR_NUM||'0');
+      }, 0);
+      const allTotal = rows.reduce((s,r)=>{
+        return s + parseInt(r.RIDE_PASGR_NUM||r.RIDE_PSGR_NUM||'0')
+                 + parseInt(r.ALIGHT_PASGR_NUM||r.ALIGHT_PSGR_NUM||'0');
+      }, 0);
+      // 해당 역 비중 × 전체 혼잡도 기준으로 역 혼잡도 추정
+      const stRatio = allTotal ? stTotal / allTotal : 0;
+      const congPct = Math.min(99, Math.max(1, Math.round(
+        (allTotal / DAILY_REF * 100) * (stRatio / (1/200))  // 역 당 평균 대비 비율
+      )));
+      const dow = ['일','월','화','수','목','금','토'][new Date(`${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}`).getDay()];
+      return { dt, congPct: Math.min(99, Math.max(1, congPct)), dow, stMatched: true };
+    } catch(e) { return null; }
+  }));
+
+  const dayData = results
+    .filter(r => r.status === 'fulfilled' && r.value)
+    .map(r => r.value)
+    .sort((a,b) => a.dt.localeCompare(b.dt));
+
+  loading.style.display = 'none';
+
+  if (dayData.length < 3) {
+    wrap.style.display = 'block';
+    svg.innerHTML = `<text x="50%" y="50%" text-anchor="middle" fill="var(--text3)" font-size="11">데이터 부족 (API 응답 없음)</text>`;
+    return;
+  }
+
+  wrap.style.display = 'block';
+
+  // ── SVG 라인 차트 계산 ──
+  const W = 380, H = 90, PL = 28, PR = 8, PT = 8, PB = 18;
+  const cw = W - PL - PR, ch = H - PT - PB;
+  const n  = dayData.length;
+  const maxY = Math.max(...dayData.map(d=>d.congPct), 50);
+  const minY = Math.max(0, Math.min(...dayData.map(d=>d.congPct)) - 5);
+
+  const xOf = i => PL + (i / (n-1)) * cw;
+  const yOf = v => PT + ch - ((v - minY) / (maxY - minY || 1)) * ch;
+
+  // 배경 그리드
+  const gridLines = [0,25,50,75,100].filter(v=>v>=minY&&v<=maxY).map(v=>{
+    const y = yOf(v);
+    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}"
+      stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+      <text x="${PL-4}" y="${(y+3.5).toFixed(1)}" text-anchor="end"
+      font-size="7" fill="var(--text3)">${v}%</text>`;
+  }).join('');
+
+  // 채움 영역 (그라데이션)
+  const areaPoints = dayData.map((d,i) => `${xOf(i).toFixed(1)},${yOf(d.congPct).toFixed(1)}`).join(' ');
+  const areaPath   = `M${xOf(0).toFixed(1)},${(PT+ch).toFixed(1)} ` +
+    dayData.map((d,i) => `L${xOf(i).toFixed(1)},${yOf(d.congPct).toFixed(1)}`).join(' ') +
+    ` L${xOf(n-1).toFixed(1)},${(PT+ch).toFixed(1)} Z`;
+
+  // 라인 경로 (부드러운 곡선 — Catmull-Rom)
+  let linePath = `M${xOf(0).toFixed(1)},${yOf(dayData[0].congPct).toFixed(1)}`;
+  for (let i = 1; i < n; i++) {
+    const x0 = xOf(i-1), y0 = yOf(dayData[i-1].congPct);
+    const x1 = xOf(i),   y1 = yOf(dayData[i].congPct);
+    const cx1 = (x0 + x1) / 2, cy1 = y0;
+    const cx2 = (x0 + x1) / 2, cy2 = y1;
+    linePath += ` C${cx1.toFixed(1)},${cy1.toFixed(1)} ${cx2.toFixed(1)},${cy2.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+
+  // 점 + 툴팁 (주말 강조)
+  const dots = dayData.map((d,i) => {
+    const x = xOf(i).toFixed(1), y = yOf(d.congPct).toFixed(1);
+    const isWeekend = d.dow === '토' || d.dow === '일';
+    const lvl = getCongLvl(d.congPct);
+    const dotColor = isWeekend ? 'var(--yellow)' : lvl.color;
+    const r = isWeekend ? 3.5 : 2.5;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="${dotColor}" stroke="var(--bg2)" stroke-width="1">
+      <title>${d.dt.slice(4,6)}/${d.dt.slice(6,8)} (${d.dow}) · ${d.congPct}% · ${lvl.label}</title>
+    </circle>`;
+  }).join('');
+
+  // X축 레이블 (5일 간격)
+  const xLabels = dayData.filter((_,i) => i === 0 || i === n-1 || i % 5 === 0).map((d,_,arr) => {
+    const i = dayData.indexOf(d);
+    return `<text x="${xOf(i).toFixed(1)}" y="${(PT+ch+PB-2).toFixed(1)}"
+      text-anchor="middle" font-size="7" fill="var(--text3)">${d.dt.slice(4,6)}/${d.dt.slice(6,8)}</text>`;
+  }).join('');
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="lcGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity=".35"/>
+        <stop offset="100%" stop-color="var(--accent)" stop-opacity=".02"/>
+      </linearGradient>
+    </defs>
+    ${gridLines}
+    <path d="${areaPath}" fill="url(#lcGrad)"/>
+    <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="1.8"
+      stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}
+    ${xLabels}`;
+
+  // 하단 레이블
+  footer.innerHTML = '';
+
+  // 통계 카드
+  const pcts    = dayData.map(d=>d.congPct);
+  const avgPct  = Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length);
+  const maxPct  = Math.max(...pcts);
+  const minPct  = Math.min(...pcts);
+  const maxDay  = dayData.find(d=>d.congPct===maxPct);
+  const minDay  = dayData.find(d=>d.congPct===minPct);
+  const fmtDt   = dt => `${dt.slice(4,6)}/${dt.slice(6,8)}`;
+  const avgLvl  = getCongLvl(avgPct);
+
+  stats.innerHTML = `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:900;color:${avgLvl.color}">${avgPct}%</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px">월평균 혼잡도</div>
+      <div style="font-size:9px;color:${avgLvl.color};margin-top:1px">${avgLvl.label}</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:8px;text-align:center">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:900;color:var(--red)">${maxPct}%</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px">최고 혼잡</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:1px">${maxDay ? fmtDt(maxDay.dt)+'('+maxDay.dow+')' : '—'}</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px;text-align:center">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:900;color:var(--green)">${minPct}%</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:2px">최저 혼잡</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:1px">${minDay ? fmtDt(minDay.dt)+'('+minDay.dow+')' : '—'}</div>
+    </div>`;
 }
 
 function switchTab(t){
