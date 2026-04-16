@@ -2049,21 +2049,56 @@ function renderTimeCong(){
 }
 
 function renderStCong(){
-  const ln=Object.keys(congData)[0]||'2';
-  const d=congData[ln];
-  const h=new Date().getHours();
-  const pct=d?.pct||Math.min(99,Math.max(1,Math.round(HOURLY[h]*(LINE_W[ln]||1))));
-  const lvl=d?.lvl||getCongLvl(pct);
-  const circ=207.3;
-  const fill=document.getElementById('gaugeFill');
-  const gp=document.getElementById('gaugePct');
-  if(fill){fill.style.strokeDashoffset=circ-(pct/100)*circ;fill.style.stroke=lvl.color;}
-  if(gp){gp.textContent=pct+'%';gp.style.color=lvl.color;}
-  document.getElementById('giTitle').textContent=currentStation+'역 혼잡도';
-  document.getElementById('giLevel').textContent=lvl.label;document.getElementById('giLevel').style.color=lvl.color;
-  document.getElementById('giWait').textContent=d?.avgInt?`약 ${d.avgInt}분`:'—';
-  document.getElementById('giInterval').textContent=d?.avgInt?`${d.avgInt}분`:'—';
-  document.getElementById('giPeak').textContent=getPeak(h);
+  const h = new Date().getHours();
+
+  // 현재 조회 역의 호선 파악 (lastRows 우선 → LINES 데이터 폴백)
+  let ln = '2';
+  if (lastRows.length) {
+    ln = lastRows[0].subwayId?.replace('10','') || '2';
+  } else {
+    for (const [l, ld] of Object.entries(LINES)) {
+      if (ld.stations.some(s => s.n === currentStation || currentStation.includes(s.n))) { ln = l; break; }
+    }
+  }
+
+  // 현재 역의 혼잡도: congData에 해당 역 데이터 있으면 우선 사용
+  const d = congData[ln];
+  let pct;
+  if (d?.pct) {
+    pct = d.pct;
+  } else {
+    // 실시간 도착 데이터로 배차 간격 기반 계산
+    const times = lastRows.map(r => parseInt(r.barvlDt||'9999')).filter(t => !isNaN(t) && t > 0);
+    const base  = HOURLY[h] * (LINE_W[ln] || 1);
+    let bonus = 0;
+    if (times.length) {
+      const avg = times.reduce((a,b)=>a+b,0) / times.length;
+      if (avg < 120) bonus = 18;
+      else if (avg < 180) bonus = 10;
+      else if (avg > 400) bonus = -10;
+    }
+    pct = Math.min(99, Math.max(1, Math.round(base + bonus + (Math.random()-0.5)*6)));
+  }
+
+  const lvl  = d?.lvl || getCongLvl(pct);
+  const circ = 207.3;
+  const fill = document.getElementById('gaugeFill');
+  const gp   = document.getElementById('gaugePct');
+
+  if (fill) { fill.style.strokeDashoffset = circ - (pct/100)*circ; fill.style.stroke = lvl.color; }
+  if (gp)   { gp.textContent = pct+'%'; gp.style.color = lvl.color; }
+
+  const avgInt = d?.avgInt || (lastRows.length >= 2
+    ? Math.round(lastRows.map(r=>parseInt(r.barvlDt||'0')).filter(t=>t>0).reduce((a,b)=>a+b,0)
+        / lastRows.filter(r=>parseInt(r.barvlDt||'0')>0).length / 60 * 10) / 10
+    : null);
+
+  document.getElementById('giTitle').textContent = currentStation + '역 혼잡도';
+  document.getElementById('giLevel').textContent  = lvl.label;
+  document.getElementById('giLevel').style.color  = lvl.color;
+  document.getElementById('giWait').textContent    = avgInt ? `약 ${avgInt}분` : '—';
+  document.getElementById('giInterval').textContent= avgInt ? `${avgInt}분` : '—';
+  document.getElementById('giPeak').textContent    = getPeak(h);
 }
 
 function switchTab(t){
