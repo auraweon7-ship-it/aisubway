@@ -2280,14 +2280,14 @@ async function renderMonthlyCongChart(stName) {
 
       // 해당 역 데이터 필터
       let matched = rows.filter(r => {
-        const nm = r.SUB_STA_NM || r.STATION_NM || r.STN_NM || r.stNm || '';
+        const nm = r.SBWY_STNS_NM || '';
         return nm === stName || nm.includes(stName);
       });
       if (!matched.length) {
         // 역 데이터 없으면 전체 합산으로 혼잡도 추정
         const total = rows.reduce((s,r)=>{
-          return s + parseInt(r.RIDE_PASGR_NUM||r.RIDE_PSGR_NUM||'0')
-                   + parseInt(r.ALIGHT_PASGR_NUM||r.ALIGHT_PSGR_NUM||'0');
+          return s + parseInt(r.GTON_TNOPE||'0')
+                   + parseInt(r.GTOFF_TNOPE||'0');
         }, 0);
         const congPct = Math.min(99, Math.max(1, Math.round(total / DAILY_REF * 100)));
         const dow = ['일','월','화','수','목','금','토'][new Date(`${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}`).getDay()];
@@ -2295,12 +2295,12 @@ async function renderMonthlyCongChart(stName) {
       }
       // 역 직접 매칭: 이용객 합산 → 혼잡도
       const stTotal = matched.reduce((s,r)=>{
-        return s + parseInt(r.RIDE_PASGR_NUM||r.RIDE_PSGR_NUM||'0')
-                 + parseInt(r.ALIGHT_PASGR_NUM||r.ALIGHT_PSGR_NUM||'0');
+        return s + parseInt(r.GTON_TNOPE||'0')
+                 + parseInt(r.GTOFF_TNOPE||'0');
       }, 0);
       const allTotal = rows.reduce((s,r)=>{
-        return s + parseInt(r.RIDE_PASGR_NUM||r.RIDE_PSGR_NUM||'0')
-                 + parseInt(r.ALIGHT_PASGR_NUM||r.ALIGHT_PSGR_NUM||'0');
+        return s + parseInt(r.GTON_TNOPE||'0')
+                 + parseInt(r.GTOFF_TNOPE||'0');
       }, 0);
       // 해당 역 비중 × 전체 혼잡도 기준으로 역 혼잡도 추정
       const stRatio = allTotal ? stTotal / allTotal : 0;
@@ -2612,8 +2612,8 @@ async function renderMonthlyRank() {
 
       // 전 노선 이용객 합산
       const total = rows.reduce((s, r) => {
-        const ride   = parseInt(r.RIDE_PASGR_NUM   || r.RIDE_PSGR_NUM   || r.ridePasgrNum   || '0');
-        const alight = parseInt(r.ALIGHT_PASGR_NUM || r.ALIGHT_PSGR_NUM || r.alightPasgrNum || '0');
+        const ride   = parseInt(r.GTON_TNOPE || '0');
+        const alight = parseInt(r.GTOFF_TNOPE || '0');
         return s + ride + alight;
       }, 0);
 
@@ -2718,10 +2718,10 @@ async function fetchPassengers(stName) {
   }
 
   // 필드명 방어적 파싱 헬퍼 (CardSubwayStatsNew API는 서비스에 따라 필드명이 다를 수 있음)
-  function getRide(r)   { return parseInt(r.RIDE_PASGR_NUM  || r.RIDE_PSGR_NUM  || r.ridePasgrNum  || r.ride  || '0'); }
-  function getAlight(r) { return parseInt(r.ALIGHT_PASGR_NUM|| r.ALIGHT_PSGR_NUM|| r.alightPasgrNum|| r.alight|| '0'); }
-  function getStName(r) { return r.SUB_STA_NM || r.STATION_NM || r.STN_NM || r.stNm || r.subStaNm || ''; }
-  function getLine(r)   { return (r.LINE_NUM || r.SBWY_ROUT_LN_NM || r.lineNum || '').replace('호선','').trim() || '?'; }
+  function getRide(r)   { return parseInt(r.GTON_TNOPE || '0'); }
+  function getAlight(r) { return parseInt(r.GTOFF_TNOPE || '0'); }
+  function getStName(r) { return r.SBWY_STNS_NM || ''; }
+  function getLine(r)   { return (r.SBWY_ROUT_LN_NM || '').replace('호선','').trim() || '?'; }
 
   let foundDt = null, totalRide = 0, totalAlight = 0, lineBreakdown = {};
   let rawSample = null; // 첫 row 디버그용
@@ -2881,11 +2881,10 @@ function renderHourly(rows, dt) {
   const nowH = new Date().getHours();
 
   // 필드명 방어적 파싱 헬퍼
-  function getRide(r)   { return parseInt(r.RIDE_PASGR_NUM  || r.RIDE_PSGR_NUM  || r.ridePasgrNum  || '0'); }
-  function getAlight(r) { return parseInt(r.ALIGHT_PASGR_NUM|| r.ALIGHT_PSGR_NUM|| r.alightPasgrNum|| '0'); }
+  function getRide(r)   { return parseInt(r.GTON_TNOPE || '0'); }
+  function getAlight(r) { return parseInt(r.GTOFF_TNOPE || '0'); }
   function getHour(r) {
-    // 시간 필드 후보: RIDE_HHMM, USE_HH, HH, SBWY_ROUT_LN_NM, TIME
-    const raw = r.RIDE_HHMM || r.USE_HH || r.HH || r.TIME || r.time || '';
+    const raw = r.USE_HH || r.HH || '';
     const hStr = String(raw).padStart(4,'0').slice(0,2);
     return parseInt(hStr);
   }
