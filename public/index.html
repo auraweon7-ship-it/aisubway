@@ -343,24 +343,38 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
 .tab.on{background:var(--accent);color:#000}
 .tab:hover:not(.on){background:rgba(255,255,255,.06);color:var(--text)}
 
-.cong-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px}
+.cong-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px}
+/* 반원 게이지 카드 */
 .cong-card{
-  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-  padding:12px;transition:all .2s;
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:12px 10px 8px;transition:all .2s;display:flex;flex-direction:column;align-items:center;
 }
-.cong-card:hover{border-color:var(--border2);transform:translateY(-1px)}
-.cc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.cc-name{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
-.cc-dot{width:9px;height:9px;border-radius:50%}
+.cong-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.cong-gauge-wrap{position:relative;width:80px;height:44px;overflow:hidden;margin-bottom:6px}
+.cong-gauge-svg{width:80px;height:80px;position:absolute;top:0;left:0}
+.cong-gauge-bg{fill:none;stroke:rgba(255,255,255,.07);stroke-width:8;stroke-linecap:round}
+.cong-gauge-fill{fill:none;stroke-width:8;stroke-linecap:round;
+  transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1),stroke .4s}
+.cong-gauge-center{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;flex-direction:column;align-items:center;
+}
+.cong-gauge-pct{
+  font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:900;line-height:1;
+}
+.cong-card-name{
+  display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;margin-bottom:4px;
+}
+.cong-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.cong-card-meta{
+  display:flex;gap:8px;font-size:9px;color:var(--text3);
+  font-family:'JetBrains Mono',monospace;
+}
 .cc-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px}
 .cb-smooth{background:rgba(52,211,153,.15);color:var(--green)}
 .cb-normal{background:rgba(251,191,36,.12);color:var(--yellow)}
 .cb-busy{background:rgba(248,113,113,.13);color:var(--red)}
 .cb-jam{background:rgba(248,113,113,.22);color:#ff3333;animation:blink .9s ease-in-out infinite}
-.bar-bg{height:4px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden;margin-bottom:6px}
-.bar-fill{height:100%;border-radius:10px;transition:width .9s cubic-bezier(.4,0,.2,1)}
-.cc-bot{display:flex;justify-content:space-between;font-size:10px;color:var(--text3)}
-.cc-pct{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px}
 
 /* 시간대 차트 */
 .time-chart-wrap{padding:16px}
@@ -1967,24 +1981,53 @@ function renderLineCong(){
   const h=new Date().getHours();
   const grid=document.getElementById('congGrid');
   if(!grid)return;
+
+  // 반원 게이지 수치: r=33, 반원 둘레 = π*33 ≈ 103.67
+  const R=33, CIRC=Math.PI*R; // 103.67
+
   grid.innerHTML=Object.keys(LINE_META).map(ln=>{
     const meta=LINE_META[ln];
     const base=HOURLY[h],w=LINE_W[ln]||1;
     const pct=congData[ln]?.pct||Math.min(99,Math.max(1,Math.round(base*w+(Math.random()-.5)*10)));
     const lvl=getCongLvl(pct);
-    const bc=pct<40?'var(--green)':pct<65?'var(--yellow)':pct<85?'var(--red)':'#ff3333';
+    const color=pct<40?'var(--green)':pct<65?'var(--yellow)':pct<85?'var(--red)':'#ff3333';
     const trains=congData[ln]?.trains||Math.round(4+Math.random()*5);
     const intv=congData[ln]?.avgInt||(Math.round((3+Math.random()*4)*10)/10);
+
+    // 반원 게이지: stroke-dasharray = 반원둘레 + 나머지
+    // stroke-dashoffset 줄어들수록 채워짐
+    // 시작점: 왼쪽 끝(9시 방향) = rotate(-180deg)
+    const filled = CIRC * (pct/100);
+    const offset = CIRC - filled; // 채운 양만큼 offset 감소
+
     return `<div class="cong-card">
-      <div class="cc-top">
-        <div class="cc-name"><span class="cc-dot" style="background:${meta.color}"></span>${meta.name}</div>
-        <span class="cc-badge ${lvl.cls}">${lvl.label}</span>
+      <div class="cong-card-name">
+        <span class="cong-dot" style="background:${meta.color}"></span>
+        ${meta.name}
+        <span class="cc-badge ${lvl.cls}" style="margin-left:auto">${lvl.label}</span>
       </div>
-      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${bc}88,${bc})"></div></div>
-      <div class="cc-bot">
+      <div class="cong-gauge-wrap">
+        <svg class="cong-gauge-svg" viewBox="0 0 80 80">
+          <!-- 반원 배경: 9시→3시 방향 (rotate -90 + 시작은 왼쪽) -->
+          <circle class="cong-gauge-bg" cx="40" cy="40" r="${R}"
+            stroke-dasharray="${CIRC.toFixed(1)} ${CIRC.toFixed(1)}"
+            stroke-dashoffset="0"
+            transform="rotate(-180 40 40)"/>
+          <!-- 반원 채우기 -->
+          <circle class="cong-gauge-fill" cx="40" cy="40" r="${R}"
+            stroke="${color}"
+            stroke-dasharray="${CIRC.toFixed(1)} ${CIRC.toFixed(1)}"
+            stroke-dashoffset="${offset.toFixed(1)}"
+            transform="rotate(-180 40 40)"
+            style="transition:stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1)"/>
+        </svg>
+        <div class="cong-gauge-center">
+          <span class="cong-gauge-pct" style="color:${color}">${pct}%</span>
+        </div>
+      </div>
+      <div class="cong-card-meta">
         <span>🚆 ${trains}편</span>
         <span>⏱ ~${intv}분</span>
-        <span class="cc-pct" style="color:${bc}">${pct}%</span>
       </div>
     </div>`;
   }).join('');
