@@ -1426,6 +1426,17 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
 
     <!-- 혼잡 순위 탭 -->
     <div id="panel-rank" style="display:none">
+      <!-- 서브탭 -->
+      <div style="display:flex;gap:6px;padding:10px 16px 0;border-bottom:1px solid var(--border)">
+        <button id="subtab-realtime" onclick="switchRankSubtab('realtime')"
+          style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'Pretendard',sans-serif;background:var(--accent);color:#000;transition:all .2s">
+          ⚡ 실시간 순위
+        </button>
+        <button id="subtab-monthly" onclick="switchRankSubtab('monthly')"
+          style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'Pretendard',sans-serif;background:var(--surface2);color:var(--text2);border:1px solid var(--border);transition:all .2s">
+          📅 월별 혼잡일
+        </button>
+      </div>
       <div class="rank-wrap" id="rankWrap">
         <div style="display:flex;align-items:center;justify-content:center;padding:20px;color:var(--text3);font-size:12px">
           로딩 중...
@@ -1515,10 +1526,21 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
           </div>
         </div>
         <div class="info-row"><span class="info-key">역 코드</span><span class="info-val" id="stCode">—</span></div>
-        <div class="info-row"><span class="info-key">첫차</span><span class="info-val">05:30</span></div>
-        <div class="info-row"><span class="info-key">막차</span><span class="info-val">24:00</span></div>
+        <div class="info-row"><span class="info-key">첫차</span><span class="info-val" id="stFirst">05:30</span></div>
+        <div class="info-row"><span class="info-key">막차</span><span class="info-val" id="stLast">24:00</span></div>
         <div class="info-row"><span class="info-key">환승 노선</span><span class="info-val" id="stTransfer">—</span></div>
         <div class="info-row"><span class="info-key">갱신 시각</span><span class="info-val" id="stUpd">—</span></div>
+        <!-- 전화번호 정보 -->
+        <div class="info-row">
+          <span class="info-key">대표전화</span>
+          <span class="info-val" id="stTel" style="cursor:pointer"
+            onclick="if(this.dataset.tel)window.open('tel:'+this.dataset.tel)">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">분실물센터</span>
+          <span class="info-val" id="stLost" style="cursor:pointer"
+            onclick="if(this.dataset.tel)window.open('tel:'+this.dataset.tel)">—</span>
+        </div>
         <!-- 승하차 인원 -->
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
           <div class="section-hd" style="margin-bottom:10px">📊 하루 승하차 인원 <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(최근 기준)</span></div>
@@ -1925,6 +1947,59 @@ function updateKPI(rows){
   }
 }
 
+/* ── 역별 전화번호 DB ── */
+const ST_INFO = {
+  '강남':    {tel:'02-553-2270', lost:'02-6110-1122', first:'05:28', last:'00:04'},
+  '홍대입구':{tel:'02-326-0333', lost:'02-6110-2222', first:'05:28', last:'24:00'},
+  '서울역':  {tel:'02-3149-0950', lost:'02-6110-1122', first:'05:15', last:'00:20'},
+  '신촌':    {tel:'02-392-8656', lost:'02-6110-2222', first:'05:30', last:'00:00'},
+  '잠실':    {tel:'02-410-0236', lost:'02-6110-2222', first:'05:28', last:'00:04'},
+  '사당':    {tel:'02-599-9041', lost:'02-6110-2222', first:'05:17', last:'00:00'},
+  '신림':    {tel:'02-856-8949', lost:'02-6110-2222', first:'05:22', last:'24:00'},
+  '종로3가': {tel:'02-765-1544', lost:'02-6110-1122', first:'05:21', last:'00:00'},
+  '교대':    {tel:'02-532-0135', lost:'02-6110-2222', first:'05:26', last:'24:00'},
+  '이태원':  {tel:'02-794-0352', lost:'02-6110-6116', first:'05:44', last:'00:10'},
+  '노원':    {tel:'02-939-5631', lost:'02-6110-4444', first:'05:25', last:'00:04'},
+  '건대입구':{tel:'02-456-4581', lost:'02-6110-2222', first:'05:29', last:'00:04'},
+  '신도림':  {tel:'02-833-2750', lost:'02-6110-2222', first:'05:08', last:'00:28'},
+  '왕십리':  {tel:'02-2293-6281', lost:'02-6110-2222', first:'05:25', last:'24:00'},
+  '합정':    {tel:'02-336-5013', lost:'02-6110-2222', first:'05:30', last:'00:00'},
+  '고속터미널':{tel:'02-535-0314', lost:'02-6110-3333', first:'05:31', last:'00:00'},
+  '여의도':  {tel:'02-783-8182', lost:'02-6110-5555', first:'05:29', last:'00:04'},
+  '강변':    {tel:'02-447-7121', lost:'02-6110-2222', first:'05:28', last:'00:04'},
+  '천호':    {tel:'02-474-0735', lost:'02-6110-2222', first:'05:27', last:'00:00'},
+  '방학':    {tel:'02-956-9009', lost:'02-6110-1122', first:'05:20', last:'23:54'},
+  '창동':    {tel:'02-902-0851', lost:'02-6110-1122', first:'05:09', last:'23:50'},
+  '도봉산':  {tel:'031-571-6034', lost:'02-6110-1122', first:'05:02', last:'23:44'},
+  '노량진':  {tel:'02-815-5533', lost:'02-6110-1122', first:'05:24', last:'24:00'},
+  '영등포':  {tel:'02-635-8252', lost:'02-6110-1122', first:'05:15', last:'00:15'},
+  '수유':    {tel:'02-906-3748', lost:'02-6110-1122', first:'05:18', last:'23:56'},
+  '동대문':  {tel:'02-2236-8783', lost:'02-6110-1122', first:'05:20', last:'00:00'},
+  '혜화':    {tel:'02-764-7477', lost:'02-6110-1122', first:'05:26', last:'00:00'},
+  '압구정':  {tel:'02-548-4181', lost:'02-6110-3333', first:'05:31', last:'00:00'},
+  '신사':    {tel:'02-3445-3814', lost:'02-6110-3333', first:'05:35', last:'00:04'},
+  '선릉':    {tel:'02-557-8474', lost:'02-6110-2222', first:'05:30', last:'00:04'},
+  '역삼':    {tel:'02-556-8421', lost:'02-6110-2222', first:'05:29', last:'00:03'},
+  '삼성':    {tel:'02-562-0353', lost:'02-6110-2222', first:'05:31', last:'00:05'},
+  '잠실나루':{tel:'02-421-6854', lost:'02-6110-2222', first:'05:31', last:'00:03'},
+  '구로':    {tel:'02-858-0751', lost:'02-6110-1122', first:'05:07', last:'24:00'},
+  '당산':    {tel:'02-2631-7451', lost:'02-6110-2222', first:'05:28', last:'00:04'},
+  '명동':    {tel:'02-752-6470', lost:'02-6110-4444', first:'05:27', last:'00:00'},
+  '이대':    {tel:'02-312-6548', lost:'02-6110-2222', first:'05:31', last:'00:00'},
+  '충정로':  {tel:'02-313-7538', lost:'02-6110-2222', first:'05:32', last:'00:00'},
+  '광화문':  {tel:'02-721-1574', lost:'02-6110-5555', first:'05:24', last:'00:00'},
+  '동묘앞':  {tel:'02-2232-4124', lost:'02-6110-6116', first:'05:41', last:'00:02'},
+  '뚝섬':    {tel:'02-499-2131', lost:'02-6110-2222', first:'05:32', last:'00:00'},
+  '성수':    {tel:'02-462-5777', lost:'02-6110-2222', first:'05:29', last:'00:03'},
+};
+
+// 호선별 분실물센터 기본값
+const LINE_LOST = {
+  '1':'02-6110-1122', '2':'02-6110-2222', '3':'02-6110-3333',
+  '4':'02-6110-4444', '5':'02-6110-5555', '6':'02-6110-6116',
+  '7':'02-6110-7777', '8':'02-6110-8888', '9':'02-6110-9999'
+};
+
 function updateStationInfo(rows,st){
   if(!rows.length)return;
   const r0=rows[0];
@@ -1937,6 +2012,30 @@ function updateStationInfo(rows,st){
   document.getElementById('stCode').textContent=r0.statnId||'—';
   const lns=[...new Set(rows.map(r=>r.subwayId?.replace('10','')).filter(Boolean))];
   document.getElementById('stTransfer').textContent=lns.length>1?lns.join('·')+'호선':'—';
+
+  // 전화번호 정보
+  const info = ST_INFO[st] || {};
+  const telEl  = document.getElementById('stTel');
+  const lostEl = document.getElementById('stLost');
+  const firstEl = document.getElementById('stFirst');
+  const lastEl  = document.getElementById('stLast');
+  if (telEl) {
+    const tel = info.tel || '02-6110-0000';
+    telEl.textContent = tel;
+    telEl.dataset.tel = tel;
+    telEl.title = '클릭 시 전화 연결';
+    telEl.style.color = 'var(--accent)';
+  }
+  if (lostEl) {
+    const lost = info.lost || LINE_LOST[ln] || '02-6110-0000';
+    lostEl.textContent = lost;
+    lostEl.dataset.tel = lost;
+    lostEl.title = '클릭 시 전화 연결';
+    lostEl.style.color = 'var(--yellow)';
+  }
+  if (firstEl) firstEl.textContent = info.first || '05:30';
+  if (lastEl)  lastEl.textContent  = info.last  || '24:00';
+
   fetchPassengers(st); // 승하차 인원 자동 조회
 }
 
@@ -2129,7 +2228,7 @@ function switchTab(t){
   if(t==='line')renderLineCong();
   else if(t==='time')renderTimeCong();
   else if(t==='st')renderStCong();
-  else if(t==='rank')renderRankCong();
+  else if(t==='rank'){ if(rankSubtab==='monthly') renderMonthlyRank(); else renderRankCong(); }
 }
 
 /* ── 혼잡 순위 렌더링 ── */
@@ -2242,6 +2341,116 @@ function renderRankCong(){
       </div>
     </div>
     <div class="rank-update">⏱ ${now} 기준 · 역 클릭 시 실시간 도착 조회</div>`;
+}
+
+/* ── 혼잡 순위 서브탭 전환 ── */
+let rankSubtab = 'realtime';
+function switchRankSubtab(tab) {
+  rankSubtab = tab;
+  const rtBtn = document.getElementById('subtab-realtime');
+  const moBtn = document.getElementById('subtab-monthly');
+  if (rtBtn && moBtn) {
+    if (tab === 'realtime') {
+      rtBtn.style.background = 'var(--accent)'; rtBtn.style.color = '#000'; rtBtn.style.border = 'none';
+      moBtn.style.background = 'var(--surface2)'; moBtn.style.color = 'var(--text2)'; moBtn.style.border = '1px solid var(--border)';
+      renderRankCong();
+    } else {
+      moBtn.style.background = 'var(--accent2)'; moBtn.style.color = '#fff'; moBtn.style.border = 'none';
+      rtBtn.style.background = 'var(--surface2)'; rtBtn.style.color = 'var(--text2)'; rtBtn.style.border = '1px solid var(--border)';
+      renderMonthlyRank();
+    }
+  }
+}
+
+/* ── 월별 혼잡 날짜 렌더링 (CardSubwayStatsNew 기반) ── */
+async function renderMonthlyRank() {
+  const wrap = document.getElementById('rankWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:28px;color:var(--text3);font-size:12px"><div class="spinner" style="width:20px;height:20px;margin-right:8px"></div>1개월 데이터 분석 중...</div>';
+
+  const gBase = (location.hostname==='localhost'||location.hostname==='127.0.0.1')
+    ? 'http://localhost:3000/api/general'
+    : `${location.origin}/api/general`;
+
+  // 최근 30일 날짜 목록 (주말 포함)
+  const today = new Date();
+  const dates = [];
+  for (let i = 2; i <= 32; i++) {
+    const d = new Date(); d.setDate(today.getDate() - i);
+    dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
+  }
+
+  // 날짜별 전체 승하차 합산 (최대 20일 샘플링)
+  const dayData = [];
+  const sampleDates = dates.filter((_,i)=>i%1.5|0===0).slice(0,20);
+
+  await Promise.allSettled(sampleDates.map(async dt => {
+    try {
+      const res = await fetch(`${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/5/${dt}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = data.CardSubwayStatsNew?.row;
+      if (!rows?.length) return;
+      const total = rows.reduce((s,r)=>s+parseInt(r.RIDE_PASGR_NUM||'0')+parseInt(r.ALIGHT_PASGR_NUM||'0'),0);
+      const dow = ['일','월','화','수','목','금','토'][new Date(dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8)).getDay()];
+      dayData.push({dt, total, dow});
+    } catch(e){}
+  }));
+
+  if (!dayData.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">데이터를 불러올 수 없습니다.</div>';
+    return;
+  }
+
+  dayData.sort((a,b)=>a.dt.localeCompare(b.dt));
+  const sorted = [...dayData].sort((a,b)=>b.total-a.total);
+  const top5days = sorted.slice(0,5);
+  const bot5days = [...sorted].reverse().slice(0,5);
+  const maxTotal = top5days[0]?.total || 1;
+
+  const fmt = n => (n/10000).toFixed(0)+'만';
+  const fmtDate = dt => `${dt.slice(4,6)}/${dt.slice(6,8)}`;
+
+  const makeDay = (item, idx, isTop) => {
+    const barColor = isTop ? '#f87171' : '#34d399';
+    const barW = Math.round(item.total / maxTotal * 100);
+    const lvlTxt = isTop
+      ? (item.total > maxTotal*0.9 ? '매우혼잡' : '혼잡')
+      : (item.total < maxTotal*0.5 ? '매우여유' : '여유');
+    const lvlColor = isTop ? 'var(--red)' : 'var(--green)';
+    const isWeekend = item.dow === '토' || item.dow === '일';
+    return `
+      <div class="rank-item" style="cursor:default">
+        <span class="rank-no" style="color:${barColor}">${idx+1}</span>
+        <div class="rank-info">
+          <div class="rank-stnm">
+            ${fmtDate(item.dt)} (${item.dow})
+            ${isWeekend ? '<span style="font-size:9px;background:rgba(251,191,36,.15);color:var(--yellow);border:1px solid rgba(251,191,36,.25);border-radius:20px;padding:1px 5px;margin-left:3px">주말</span>' : ''}
+          </div>
+          <div class="rank-line" style="color:${lvlColor}">${lvlTxt}</div>
+          <div class="rank-bar-bg">
+            <div class="rank-bar-fill" style="width:${barW}%;background:${barColor}"></div>
+          </div>
+        </div>
+        <span class="rank-pct" style="color:${barColor};font-size:10px">${fmt(item.total)}</span>
+      </div>`;
+  };
+
+  const rangeStart = fmtDate(dayData[0]?.dt||'');
+  const rangeEnd   = fmtDate(dayData[dayData.length-1]?.dt||'');
+
+  wrap.innerHTML = `
+    <div class="rank-wrap">
+      <div class="rank-col">
+        <div class="rank-col-title" style="color:var(--red)">🔥 혼잡 상위 5일</div>
+        ${top5days.map((d,i)=>makeDay(d,i,true)).join('')}
+      </div>
+      <div class="rank-col">
+        <div class="rank-col-title" style="color:var(--green)">🟢 혼잡 하위 5일</div>
+        ${bot5days.map((d,i)=>makeDay(d,i,false)).join('')}
+      </div>
+    </div>
+    <div class="rank-update" style="padding:0 16px 10px">📅 ${rangeStart}~${rangeEnd} 기준 · 전 노선 총 이용객 기준</div>`;
 }
 
 
