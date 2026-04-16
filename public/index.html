@@ -542,6 +542,24 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
 .pax-bar-fill{height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1)}
 .pax-bar-num{color:var(--text2);width:56px;text-align:right;font-family:'JetBrains Mono',monospace;flex-shrink:0}
 .pax-date{font-size:10px;color:var(--text3);text-align:right;margin-top:4px}
+
+/* 시간대별 승하차 차트 */
+.pax-hour-wrap{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.pax-hour-title{font-size:10px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.pax-chart{display:flex;align-items:flex-end;gap:2px;height:56px;margin-bottom:4px}
+.pax-col{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:2px;position:relative}
+.pax-col-bars{display:flex;gap:1px;align-items:flex-end;width:100%;height:48px}
+.pax-bar-r{flex:1;border-radius:2px 2px 0 0;min-height:1px;transition:height .7s cubic-bezier(.4,0,.2,1)}
+.pax-bar-a{flex:1;border-radius:2px 2px 0 0;min-height:1px;transition:height .7s cubic-bezier(.4,0,.2,1)}
+.pax-tick{font-size:8px;color:var(--text3);white-space:nowrap}
+.pax-now-tick{color:var(--accent);font-weight:700}
+.pax-legend{display:flex;gap:10px;font-size:10px;color:var(--text2);margin-top:4px}
+.pax-legend span{display:flex;align-items:center;gap:4px}
+.pax-legend i{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pax-total-row{display:flex;justify-content:space-between;font-size:11px;padding:6px 0;border-top:1px solid var(--border);margin-top:6px}
+.pax-total-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+.pax-total-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:800}
+.pax-total-lbl{font-size:9px;color:var(--text3)}
 {width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
 
 /* 반응형 */
@@ -1503,10 +1521,11 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
         <div class="info-row"><span class="info-key">갱신 시각</span><span class="info-val" id="stUpd">—</span></div>
         <!-- 승하차 인원 -->
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <div class="section-hd" style="margin-bottom:10px">📊 승하차 인원 <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(최근 기준)</span></div>
+          <div class="section-hd" style="margin-bottom:10px">📊 하루 승하차 인원 <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(최근 기준)</span></div>
           <div id="passengerBox">
             <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px 0">역 검색 후 자동 조회</div>
           </div>
+          <div id="hourlyBox"></div>
         </div>
       </div>
 
@@ -2244,56 +2263,70 @@ const GENERAL_KEY = '685a4d4b48617572373962795a424b';
 
 async function fetchPassengers(stName) {
   const box = document.getElementById('passengerBox');
+  const hbox = document.getElementById('hourlyBox');
   if (!box) return;
   box.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">조회 중...</div>';
+  if (hbox) hbox.innerHTML = '';
 
-  // 최근 7일 날짜 생성 (어제 기준)
+  const gBase = (location.hostname==='localhost'||location.hostname==='127.0.0.1')
+    ? 'http://localhost:3000/api/general'
+    : `${location.origin}/api/general`;
+
+  // 최근 7일 날짜 생성
   const dates = [];
   for (let i = 1; i <= 7; i++) {
     const d = new Date(); d.setDate(d.getDate() - i);
     dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
   }
 
-  // 가장 최근 날짜부터 순차 시도
+  let foundDt = null, totalRide = 0, totalAlight = 0, lineBreakdown = {};
+
+  // 1) 하루 합산 (CardSubwayStatsNew)
   for (const dt of dates) {
     try {
-      const gBase = (location.hostname==='localhost'||location.hostname==='127.0.0.1')
-        ? 'http://localhost:3000/api/general'
-        : `${location.origin}/api/general`;
-
-      const url = `${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/100/${dt}`;
-      const res = await fetch(url);
+      const res = await fetch(`${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/100/${dt}`);
       if (!res.ok) continue;
       const data = await res.json();
       const rows = data.CardSubwayStatsNew?.row;
       if (!rows?.length) continue;
-
-      // 역명 매칭 (부분 일치)
-      const matched = rows.filter(r =>
-        r.SUB_STA_NM && (r.SUB_STA_NM === stName || r.SUB_STA_NM.includes(stName))
-      );
+      const matched = rows.filter(r => r.SUB_STA_NM && (r.SUB_STA_NM === stName || r.SUB_STA_NM.includes(stName)));
       if (!matched.length) continue;
-
-      // 호선별 합산
-      let totalRide = 0, totalAlight = 0;
-      const lineBreakdown = {};
       matched.forEach(r => {
-        const ride   = parseInt(r.RIDE_PASGR_NUM  || '0');
+        const ride   = parseInt(r.RIDE_PASGR_NUM   || '0');
         const alight = parseInt(r.ALIGHT_PASGR_NUM || '0');
-        totalRide   += ride;
-        totalAlight += alight;
+        totalRide   += ride; totalAlight += alight;
         const ln = r.LINE_NUM?.replace('호선','').trim() || '?';
         if (!lineBreakdown[ln]) lineBreakdown[ln] = {ride:0,alight:0};
-        lineBreakdown[ln].ride   += ride;
-        lineBreakdown[ln].alight += alight;
+        lineBreakdown[ln].ride += ride; lineBreakdown[ln].alight += alight;
       });
-
-      renderPassengers(totalRide, totalAlight, lineBreakdown, dt);
-      return;
+      foundDt = dt;
+      break;
     } catch(e) { continue; }
   }
 
-  box.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">승하차 데이터 없음</div>';
+  if (foundDt) {
+    renderPassengers(totalRide, totalAlight, lineBreakdown, foundDt);
+  } else {
+    box.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0">승하차 데이터 없음</div>';
+  }
+
+  // 2) 시간대별 (CardSubwayStatsNewTime) — 별도 호출
+  if (foundDt && hbox) {
+    try {
+      const url2 = `${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNewTime/1/300/${foundDt}`;
+      const res2 = await fetch(url2);
+      if (res2.ok) {
+        const data2 = await res2.json();
+        const rows2 = data2.CardSubwayStatsNewTime?.row;
+        if (rows2?.length) {
+          const matched2 = rows2.filter(r => r.SUB_STA_NM && (r.SUB_STA_NM === stName || r.SUB_STA_NM.includes(stName)));
+          if (matched2.length) {
+            renderHourly(matched2, foundDt);
+          }
+        }
+      }
+    } catch(e) {}
+  }
 }
 
 function renderPassengers(ride, alight, lines, dt) {
@@ -2303,25 +2336,21 @@ function renderPassengers(ride, alight, lines, dt) {
   const total = ride + alight;
   const rPct  = total ? Math.round(ride   / total * 100) : 50;
   const aPct  = total ? Math.round(alight / total * 100) : 50;
-
-  // 날짜 포맷
   const dateStr = `${dt.slice(0,4)}.${dt.slice(4,6)}.${dt.slice(6,8)}`;
 
-  let linesHtml = '';
   const lnMeta = {'1':'#3b5bdb','2':'#2f9e44','3':'#e8590c','4':'#4dabf7',
                    '5':'#9c36b5','6':'#c55c1d','7':'#5c940d','8':'#e03131','9':'#e67700'};
   const maxVal = Math.max(...Object.values(lines).map(v => v.ride + v.alight), 1);
 
+  let linesHtml = '';
   Object.entries(lines).sort((a,b)=>(b[1].ride+b[1].alight)-(a[1].ride+a[1].alight)).forEach(([ln,v]) => {
-    const c   = lnMeta[ln] || '#64748b';
+    const c = lnMeta[ln] || '#64748b';
     const tot = v.ride + v.alight;
     const w   = Math.round(tot / maxVal * 100);
     linesHtml += `
       <div class="pax-bar-row">
         <span class="pax-bar-key" style="color:${c};font-weight:700">${ln}호선</span>
-        <div class="pax-bar-bg">
-          <div class="pax-bar-fill" style="width:${w}%;background:${c}88"></div>
-        </div>
+        <div class="pax-bar-bg"><div class="pax-bar-fill" style="width:${w}%;background:${c}88"></div></div>
         <span class="pax-bar-num">${fmt(tot)}</span>
       </div>`;
   });
@@ -2329,22 +2358,100 @@ function renderPassengers(ride, alight, lines, dt) {
   box.innerHTML = `
     <div class="pax-grid">
       <div class="pax-card">
-        <div class="pax-val" style="color:var(--accent)">🚶 ${fmt(ride)}</div>
-        <div class="pax-lbl">승차 인원</div>
+        <div class="pax-val" style="color:var(--accent)">${fmt(ride)}</div>
+        <div class="pax-lbl">🚶 승차 인원</div>
         <div style="margin-top:5px;height:3px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden">
-          <div style="width:${rPct}%;height:100%;background:var(--accent);border-radius:10px"></div>
+          <div style="width:${rPct}%;height:100%;background:var(--accent);border-radius:10px;transition:width .8s"></div>
         </div>
       </div>
       <div class="pax-card">
-        <div class="pax-val" style="color:var(--green)">🚶 ${fmt(alight)}</div>
-        <div class="pax-lbl">하차 인원</div>
+        <div class="pax-val" style="color:var(--green)">${fmt(alight)}</div>
+        <div class="pax-lbl">🚶 하차 인원</div>
         <div style="margin-top:5px;height:3px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden">
-          <div style="width:${aPct}%;height:100%;background:var(--green);border-radius:10px"></div>
+          <div style="width:${aPct}%;height:100%;background:var(--green);border-radius:10px;transition:width .8s"></div>
         </div>
       </div>
     </div>
-    <div class="pax-bar-wrap">${linesHtml}</div>
+    <div class="pax-total-row">
+      <div class="pax-total-item">
+        <span class="pax-total-val" style="color:var(--text)">${fmt(ride+alight)}</span>
+        <span class="pax-total-lbl">하루 총 이용객</span>
+      </div>
+      <div class="pax-total-item">
+        <span class="pax-total-val" style="color:var(--accent)">${rPct}%</span>
+        <span class="pax-total-lbl">승차 비율</span>
+      </div>
+      <div class="pax-total-item">
+        <span class="pax-total-val" style="color:var(--green)">${aPct}%</span>
+        <span class="pax-total-lbl">하차 비율</span>
+      </div>
+    </div>
+    ${Object.keys(lines).length > 1 ? `<div class="pax-bar-wrap">${linesHtml}</div>` : ''}
     <div class="pax-date">📅 ${dateStr} 기준</div>`;
+}
+
+/* 시간대별 승하차 차트 */
+function renderHourly(rows, dt) {
+  const hbox = document.getElementById('hourlyBox');
+  if (!hbox) return;
+
+  const fmt = n => n >= 10000 ? (n/10000).toFixed(1)+'만' : n.toLocaleString('ko-KR');
+  const dateStr = `${dt.slice(0,4)}.${dt.slice(4,6)}.${dt.slice(6,8)}`;
+  const nowH = new Date().getHours();
+
+  // 시간대 집계 (4시~24시, 2시간 단위로 그룹)
+  const hourMap = {};
+  rows.forEach(r => {
+    const raw = r.RIDE_HHMM || r.SBWY_ROUT_LN_NM || '';
+    // 시간 파싱: "0530" 또는 "05" 형태
+    const hStr = raw.length >= 2 ? raw.slice(0,2) : '';
+    const h = parseInt(hStr);
+    if (isNaN(h)) return;
+    if (!hourMap[h]) hourMap[h] = {ride:0, alight:0};
+    hourMap[h].ride   += parseInt(r.RIDE_PASGR_NUM   || '0');
+    hourMap[h].alight += parseInt(r.ALIGHT_PASGR_NUM || '0');
+  });
+
+  // 05~23시 배열 생성
+  const hours = Array.from({length:19}, (_,i) => i+5);
+  const rideVals   = hours.map(h => hourMap[h]?.ride   || 0);
+  const alightVals = hours.map(h => hourMap[h]?.alight || 0);
+  const maxVal     = Math.max(...rideVals, ...alightVals, 1);
+
+  if (maxVal <= 1) return; // 데이터 없으면 표시 안 함
+
+  const cols = hours.map((h, i) => {
+    const rH  = Math.round(rideVals[i]   / maxVal * 100);
+    const aH  = Math.round(alightVals[i] / maxVal * 100);
+    const isNow = h === nowH;
+    return `<div class="pax-col">
+      <div class="pax-col-bars">
+        <div class="pax-bar-r" style="height:${rH}%;background:rgba(56,189,248,${isNow?'.9':'.55'})"></div>
+        <div class="pax-bar-a" style="height:${aH}%;background:rgba(52,211,153,${isNow?'.9':'.45'})"></div>
+      </div>
+      <span class="pax-tick${isNow?' pax-now-tick':''}">${h}</span>
+    </div>`;
+  }).join('');
+
+  // 피크 시간 찾기
+  const peakRideH   = hours[rideVals.indexOf(Math.max(...rideVals))];
+  const peakAlightH = hours[alightVals.indexOf(Math.max(...alightVals))];
+
+  hbox.innerHTML = `
+    <div class="pax-hour-wrap">
+      <div class="pax-hour-title">
+        <span>⏱ 시간대별 승하차 현황</span>
+        <span style="font-size:9px;color:var(--text3)">${dateStr}</span>
+      </div>
+      <div class="pax-chart">${cols}</div>
+      <div class="pax-legend">
+        <span><i style="background:rgba(56,189,248,.7)"></i>승차</span>
+        <span><i style="background:rgba(52,211,153,.6)"></i>하차</span>
+        <span style="margin-left:auto;font-size:9px;color:var(--text3)">
+          🔵 피크 ${peakRideH}시 · 🟢 피크 ${peakAlightH}시
+        </span>
+      </div>
+    </div>`;
 }
 
 
