@@ -1543,7 +1543,7 @@ tbody td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,2
         </div>
         <!-- 승하차 인원 -->
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <div class="section-hd" style="margin-bottom:10px">📊 하루 승하차 인원 <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(최근 기준)</span></div>
+          <div class="section-hd" style="margin-bottom:10px">📊 일일 평균 혼잡도 <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(최근 기준)</span></div>
           <div id="passengerBox">
             <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px 0">역 검색 후 자동 조회</div>
           </div>
@@ -2363,16 +2363,17 @@ function switchRankSubtab(tab) {
 }
 
 /* ── 월별 혼잡 날짜 렌더링 (CardSubwayStatsNew 기반) ── */
+/* ── 월별 혼잡 날짜 렌더링 — 혼잡도(%) 기준 ── */
 async function renderMonthlyRank() {
   const wrap = document.getElementById('rankWrap');
   if (!wrap) return;
-  wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:28px;color:var(--text3);font-size:12px"><div class="spinner" style="width:20px;height:20px;margin-right:8px"></div>1개월 데이터 분석 중...</div>';
+  wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:28px;color:var(--text3);font-size:12px"><div class="spinner" style="width:20px;height:20px;margin-right:8px"></div>1개월 혼잡도 분석 중...</div>';
 
   const gBase = (location.hostname==='localhost'||location.hostname==='127.0.0.1')
     ? 'http://localhost:3000/api/general'
     : `${location.origin}/api/general`;
 
-  // 최근 30일 날짜 목록 (주말 포함)
+  // 최근 30일 날짜
   const today = new Date();
   const dates = [];
   for (let i = 2; i <= 32; i++) {
@@ -2380,81 +2381,97 @@ async function renderMonthlyRank() {
     dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
   }
 
-  // 날짜별 전체 승하차 합산 (최대 20일 샘플링)
+  // 샘플링 — 평일/주말 균형 있게 최대 20일
+  const sampleDates = dates.slice(0, 20);
+
+  // 서울 지하철 일일 기준 이용객 (전 노선 합산, 약 700만명 = 혼잡도 100% 기준)
+  const DAILY_REF = 7_000_000;
+
   const dayData = [];
-  const sampleDates = dates.filter((_,i)=>i%1.5|0===0).slice(0,20);
 
   await Promise.allSettled(sampleDates.map(async dt => {
     try {
-      const res = await fetch(`${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/5/${dt}`);
+      const res = await fetch(`${gBase}/${GENERAL_KEY}/json/CardSubwayStatsNew/1/100/${dt}`);
       if (!res.ok) return;
       const data = await res.json();
-      const rows = data.CardSubwayStatsNew?.row;
+
+      // 최상위 키에서 row 탐색
+      let rows = null;
+      for (const k of Object.keys(data)) {
+        if (data[k]?.row?.length) { rows = data[k].row; break; }
+      }
       if (!rows?.length) return;
-      const total = rows.reduce((s,r)=>{
-        const ride   = parseInt(r.RIDE_PASGR_NUM  || r.RIDE_PSGR_NUM  || r.ridePasgrNum  || '0');
-        const alight = parseInt(r.ALIGHT_PASGR_NUM|| r.ALIGHT_PSGR_NUM|| r.alightPasgrNum|| '0');
+
+      // 전 노선 이용객 합산
+      const total = rows.reduce((s, r) => {
+        const ride   = parseInt(r.RIDE_PASGR_NUM   || r.RIDE_PSGR_NUM   || r.ridePasgrNum   || '0');
+        const alight = parseInt(r.ALIGHT_PASGR_NUM || r.ALIGHT_PSGR_NUM || r.alightPasgrNum || '0');
         return s + ride + alight;
       }, 0);
-      const dow = ['일','월','화','수','목','금','토'][new Date(dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8)).getDay()];
-      dayData.push({dt, total, dow});
-    } catch(e){}
+
+      // 혼잡도(%) 계산
+      const congPct = Math.min(99, Math.max(1, Math.round(total / DAILY_REF * 100)));
+      const dow = ['일','월','화','수','목','금','토'][
+        new Date(`${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}`).getDay()
+      ];
+      dayData.push({ dt, congPct, total, dow });
+    } catch(e) {}
   }));
 
   if (!dayData.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">데이터를 불러올 수 없습니다.</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">혼잡도 데이터를 불러올 수 없습니다.</div>';
     return;
   }
 
-  dayData.sort((a,b)=>a.dt.localeCompare(b.dt));
-  const sorted = [...dayData].sort((a,b)=>b.total-a.total);
-  const top5days = sorted.slice(0,5);
-  const bot5days = [...sorted].reverse().slice(0,5);
-  const maxTotal = top5days[0]?.total || 1;
+  dayData.sort((a,b) => a.dt.localeCompare(b.dt));
+  const sorted    = [...dayData].sort((a,b) => b.congPct - a.congPct);
+  const top5days  = sorted.slice(0, 5);
+  const bot5days  = [...sorted].reverse().slice(0, 5);
 
-  const fmt = n => (n/10000).toFixed(0)+'만';
   const fmtDate = dt => `${dt.slice(4,6)}/${dt.slice(6,8)}`;
+  const fmt     = n  => (n / 10000).toFixed(0) + '만';
 
   const makeDay = (item, idx, isTop) => {
-    const barColor = isTop ? '#f87171' : '#34d399';
-    const barW = Math.round(item.total / maxTotal * 100);
-    const lvlTxt = isTop
-      ? (item.total > maxTotal*0.9 ? '매우혼잡' : '혼잡')
-      : (item.total < maxTotal*0.5 ? '매우여유' : '여유');
-    const lvlColor = isTop ? 'var(--red)' : 'var(--green)';
-    const isWeekend = item.dow === '토' || item.dow === '일';
+    const lvl        = getCongLvl(item.congPct);
+    const barColor   = isTop
+      ? (item.congPct >= 85 ? '#ff4444' : item.congPct >= 65 ? '#f87171' : '#fbbf24')
+      : '#34d399';
+    const barW       = item.congPct;
+    const isWeekend  = item.dow === '토' || item.dow === '일';
     return `
       <div class="rank-item" style="cursor:default">
-        <span class="rank-no" style="color:${barColor}">${idx+1}</span>
+        <span class="rank-no" style="color:${barColor}">${idx + 1}</span>
         <div class="rank-info">
           <div class="rank-stnm">
             ${fmtDate(item.dt)} (${item.dow})
             ${isWeekend ? '<span style="font-size:9px;background:rgba(251,191,36,.15);color:var(--yellow);border:1px solid rgba(251,191,36,.25);border-radius:20px;padding:1px 5px;margin-left:3px">주말</span>' : ''}
           </div>
-          <div class="rank-line" style="color:${lvlColor}">${lvlTxt}</div>
+          <div class="rank-line" style="color:${lvl.color}">${lvl.label} · ${fmt(item.total)}명</div>
           <div class="rank-bar-bg">
             <div class="rank-bar-fill" style="width:${barW}%;background:${barColor}"></div>
           </div>
         </div>
-        <span class="rank-pct" style="color:${barColor};font-size:10px">${fmt(item.total)}</span>
+        <span class="rank-pct" style="color:${barColor}">${item.congPct}%</span>
       </div>`;
   };
 
-  const rangeStart = fmtDate(dayData[0]?.dt||'');
-  const rangeEnd   = fmtDate(dayData[dayData.length-1]?.dt||'');
+  const rangeStart = fmtDate(dayData[0]?.dt || '');
+  const rangeEnd   = fmtDate(dayData[dayData.length - 1]?.dt || '');
 
   wrap.innerHTML = `
     <div class="rank-wrap">
       <div class="rank-col">
         <div class="rank-col-title" style="color:var(--red)">🔥 혼잡 상위 5일</div>
-        ${top5days.map((d,i)=>makeDay(d,i,true)).join('')}
+        ${top5days.map((d,i) => makeDay(d, i, true)).join('')}
       </div>
       <div class="rank-col">
         <div class="rank-col-title" style="color:var(--green)">🟢 혼잡 하위 5일</div>
-        ${bot5days.map((d,i)=>makeDay(d,i,false)).join('')}
+        ${bot5days.map((d,i) => makeDay(d, i, false)).join('')}
       </div>
     </div>
-    <div class="rank-update" style="padding:0 16px 10px">📅 ${rangeStart}~${rangeEnd} 기준 · 전 노선 총 이용객 기준</div>`;
+    <div class="rank-update" style="padding:0 16px 10px">
+      📅 ${rangeStart}~${rangeEnd} 기준 · 전 노선 이용객 기반 혼잡도
+    </div>`;
 }
 
 
@@ -2576,61 +2593,73 @@ async function fetchPassengers(stName) {
 function renderPassengers(ride, alight, lines, dt) {
   const box = document.getElementById('passengerBox');
   if (!box) return;
-  const fmt = n => n.toLocaleString('ko-KR');
-  const total = ride + alight;
-  const rPct  = total ? Math.round(ride   / total * 100) : 50;
-  const aPct  = total ? Math.round(alight / total * 100) : 50;
-  const dateStr = `${dt.slice(0,4)}.${dt.slice(4,6)}.${dt.slice(6,8)}`;
 
-  const lnMeta = {'1':'#3b5bdb','2':'#2f9e44','3':'#e8590c','4':'#4dabf7',
-                   '5':'#9c36b5','6':'#c55c1d','7':'#5c940d','8':'#e03131','9':'#e67700'};
-  const maxVal = Math.max(...Object.values(lines).map(v => v.ride + v.alight), 1);
+  const fmt  = n => n.toLocaleString('ko-KR');
+  const dateStr = `${dt.slice(0,4)}.${dt.slice(4,6)}.${dt.slice(6,8)}`;
+  const lnMeta  = {'1':'#3b5bdb','2':'#2f9e44','3':'#e8590c','4':'#4dabf7',
+                    '5':'#9c36b5','6':'#c55c1d','7':'#5c940d','8':'#e03131','9':'#e67700'};
+
+  // 승하차 인원 → 일일 평균 혼잡도 추정
+  // 기준: 서울 지하철 일평균 총 이용객 약 700만명 → 100% 혼잡으로 정규화
+  const DAILY_REF = 7_000_000;
+  const total     = ride + alight;
+  const congPct   = Math.min(99, Math.max(1, Math.round(total / DAILY_REF * 100)));
+  const lvl       = getCongLvl(congPct);
+
+  // 호선별 혼잡도
+  const lnEntries = Object.entries(lines).sort((a,b)=>(b[1].ride+b[1].alight)-(a[1].ride+a[1].alight));
+  const maxLnVal  = Math.max(...lnEntries.map(([,v])=>v.ride+v.alight), 1);
 
   let linesHtml = '';
-  Object.entries(lines).sort((a,b)=>(b[1].ride+b[1].alight)-(a[1].ride+a[1].alight)).forEach(([ln,v]) => {
-    const c = lnMeta[ln] || '#64748b';
-    const tot = v.ride + v.alight;
-    const w   = Math.round(tot / maxVal * 100);
+  lnEntries.forEach(([ln, v]) => {
+    const c      = lnMeta[ln] || '#64748b';
+    const tot    = v.ride + v.alight;
+    const lnPct  = Math.min(99, Math.max(1, Math.round(tot / (DAILY_REF / 9) * 100)));
+    const lnLvl  = getCongLvl(lnPct);
+    const barW   = Math.round(tot / maxLnVal * 100);
     linesHtml += `
       <div class="pax-bar-row">
         <span class="pax-bar-key" style="color:${c};font-weight:700">${ln}호선</span>
-        <div class="pax-bar-bg"><div class="pax-bar-fill" style="width:${w}%;background:${c}88"></div></div>
-        <span class="pax-bar-num">${fmt(tot)}</span>
+        <div class="pax-bar-bg">
+          <div class="pax-bar-fill" style="width:${barW}%;background:${c}88"></div>
+        </div>
+        <span class="pax-bar-num" style="color:${lnLvl.color};font-size:10px">${lnPct}%</span>
       </div>`;
   });
 
+  // SVG 게이지 (반원)
+  const CIRC    = Math.PI * 33;
+  const offset  = CIRC - (congPct / 100) * CIRC;
+
   box.innerHTML = `
-    <div class="pax-grid">
-      <div class="pax-card">
-        <div class="pax-val" style="color:var(--accent)">${fmt(ride)}</div>
-        <div class="pax-lbl">🚶 승차 인원</div>
-        <div style="margin-top:5px;height:3px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden">
-          <div style="width:${rPct}%;height:100%;background:var(--accent);border-radius:10px;transition:width .8s"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="position:relative;width:72px;height:40px;overflow:hidden;flex-shrink:0">
+        <svg width="72" height="72" style="position:absolute;top:0;left:0">
+          <circle fill="none" stroke="rgba(255,255,255,.07)" stroke-width="7"
+            cx="36" cy="36" r="33"
+            stroke-dasharray="${CIRC.toFixed(1)} ${CIRC.toFixed(1)}"
+            stroke-dashoffset="0"
+            transform="rotate(-180 36 36)"/>
+          <circle fill="none" stroke="${lvl.color}" stroke-width="7" stroke-linecap="round"
+            cx="36" cy="36" r="33"
+            stroke-dasharray="${CIRC.toFixed(1)} ${CIRC.toFixed(1)}"
+            stroke-dashoffset="${offset.toFixed(1)}"
+            transform="rotate(-180 36 36)"
+            style="transition:stroke-dashoffset .9s cubic-bezier(.4,0,.2,1)"/>
+        </svg>
+        <div style="position:absolute;bottom:0;left:0;right:0;text-align:center">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:900;color:${lvl.color}">${congPct}%</span>
         </div>
       </div>
-      <div class="pax-card">
-        <div class="pax-val" style="color:var(--green)">${fmt(alight)}</div>
-        <div class="pax-lbl">🚶 하차 인원</div>
-        <div style="margin-top:5px;height:3px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden">
-          <div style="width:${aPct}%;height:100%;background:var(--green);border-radius:10px;transition:width .8s"></div>
-        </div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;color:${lvl.color};margin-bottom:2px">${lvl.label}</div>
+        <div style="font-size:11px;color:var(--text2)">일일 평균 혼잡도</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">총 이용객 ${fmt(total)}명</div>
       </div>
     </div>
-    <div class="pax-total-row">
-      <div class="pax-total-item">
-        <span class="pax-total-val" style="color:var(--text)">${fmt(ride+alight)}</span>
-        <span class="pax-total-lbl">하루 총 이용객</span>
-      </div>
-      <div class="pax-total-item">
-        <span class="pax-total-val" style="color:var(--accent)">${rPct}%</span>
-        <span class="pax-total-lbl">승차 비율</span>
-      </div>
-      <div class="pax-total-item">
-        <span class="pax-total-val" style="color:var(--green)">${aPct}%</span>
-        <span class="pax-total-lbl">하차 비율</span>
-      </div>
-    </div>
-    ${Object.keys(lines).length > 1 ? `<div class="pax-bar-wrap">${linesHtml}</div>` : ''}
+    ${lnEntries.length > 1 ? `
+    <div style="font-size:10px;color:var(--text3);margin-bottom:5px;font-weight:700;letter-spacing:.04em">호선별 혼잡도</div>
+    <div class="pax-bar-wrap">${linesHtml}</div>` : ''}
     <div class="pax-date">📅 ${dateStr} 기준</div>`;
 }
 
